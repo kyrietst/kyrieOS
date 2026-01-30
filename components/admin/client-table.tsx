@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { createClient } from "@/utils/supabase/client"
 
 export type Client = {
   id: string
@@ -47,46 +48,6 @@ export type Client = {
   lastActive: string
   avatar?: string
 }
-
-const data: Client[] = [
-  {
-    id: "m5gr84i9",
-    name: "TechCorp Solutions",
-    email: "contact@techcorp.com",
-    status: "active",
-    plan: "Enterprise",
-    roi: "5.2x",
-    lastActive: "10 min ago",
-    avatar: "https://github.com/shadcn.png"
-  },
-  {
-    id: "3u1re74n",
-    name: "GreenEnergy Co",
-    email: "green@energy.com",
-    status: "active",
-    plan: "Growth",
-    roi: "3.1x",
-    lastActive: "2 hours ago",
-  },
-  {
-    id: "derv1ws0",
-    name: "Bakery Deluxe",
-    email: "orders@bakery.com",
-    status: "pending",
-    plan: "Starter",
-    roi: "-",
-    lastActive: "1 day ago",
-  },
-  {
-    id: "5kma53ae",
-    name: "Consulting Pro",
-    email: "test@consulting.com",
-    status: "inactive",
-    plan: "Starter",
-    roi: "1.2x",
-    lastActive: "2 weeks ago",
-  },
-]
 
 export const columns: ColumnDef<Client>[] = [
   {
@@ -109,7 +70,9 @@ export const columns: ColumnDef<Client>[] = [
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-        const status = row.getValue("status") as string
+        const val = row.getValue("status") as string;
+        // Map any string to the 3 main statuses for badge variants
+        const status = val === 'ACTIVE_HEALTHY' ? 'active' : val === 'INACTIVE' ? 'inactive' : 'pending';
         return (
             <Badge variant={status === 'active' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'} className="capitalize">
                 {status}
@@ -117,12 +80,13 @@ export const columns: ColumnDef<Client>[] = [
         )
     },
   },
+  // ... (Other columns can remain similar or be mapped from real data)
   {
     accessorKey: "plan",
     header: "Plano",
-    cell: ({ row }) => <div className="font-medium">{row.getValue("plan")}</div>,
+    cell: ({ row }) => <div className="font-medium">{row.getValue("plan") || "N/A"}</div>,
   },
-  {
+   {
     accessorKey: "roi",
     header: ({ column }) => {
         return (
@@ -135,7 +99,7 @@ export const columns: ColumnDef<Client>[] = [
           </Button>
         )
     },
-    cell: ({ row }) => <div className="font-bold text-center text-emerald-500">{row.getValue("roi")}</div>,
+    cell: ({ row }) => <div className="font-bold text-center text-emerald-500">{row.getValue("roi") || "-"}</div>,
   },
   {
     id: "actions",
@@ -173,12 +137,35 @@ export const columns: ColumnDef<Client>[] = [
 ]
 
 export function ClientTable() {
+  const [data, setData] = React.useState<Client[]>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     []
   )
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
+  
+  const supabase = createClient();
+
+  React.useEffect(() => {
+      async function loadClients() {
+          const { data: orgs, error } = await supabase.from('organizations').select('*');
+          if (orgs) {
+              const mappedClients: Client[] = orgs.map(org => ({
+                  id: org.id,
+                  name: org.name,
+                  email: "contact@" + org.slug + ".com", // Mock email for now or fetch from profiles
+                  status: org.status || "active", // Assuming status exists or default
+                  plan: "Growth", // Mock or metadata
+                  roi: "4.2x", // Mock
+                  lastActive: new Date(org.created_at).toLocaleDateString(),
+                  avatar: org.logo_url
+              }));
+              setData(mappedClients);
+          }
+      }
+      loadClients();
+  }, [])
 
   const table = useReactTable({
     data,

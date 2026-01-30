@@ -8,6 +8,7 @@ import {
   LogOut,
   Command
 } from 'lucide-react'
+import { GlobalTimer } from '@/components/timer/GlobalTimer'
 
 export default function KyrieLayout({
   children,
@@ -71,6 +72,8 @@ export default function KyrieLayout({
           {children}
         </div>
       </main>
+      
+      <GlobalTimer />
     </div>
   )
 }

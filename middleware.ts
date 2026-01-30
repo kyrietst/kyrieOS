@@ -47,8 +47,8 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role || 'CLIENT_VIEWER'
     const path = request.nextUrl.pathname
+    const role = profile?.role || 'CLIENT_VIEWER'
 
     // Regras de Redirecionamento
     
