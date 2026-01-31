@@ -11,7 +11,7 @@ experiência de usuário (Next.js) com o poder de processamento de IA (Python).
 graph TD
     User[Usuário] --> Frontend[Next.js App (Port 3000)]
     Frontend -->|Auth & Data| Supabase[Supabase (Auth/DB)]
-    Frontend -->|AI Requests| Backend[Python FastAPI (Port 8000)]
+    Frontend -->|AI Requests| Backend[Python FastAPI (Port 8002)]
     
     subgraph "Camada de Inteligência"
         Backend -->|Orchestration| LangGraph[LangGraph Agents]

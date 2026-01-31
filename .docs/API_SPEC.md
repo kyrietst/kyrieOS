@@ -35,8 +35,8 @@ Gera o relatório semanal usando o agente LangGraph.
 
 - **Backend:** FastAPI
 - **Graph:** `report_generator.py`
-- **Nodes:** `gather_time` (Clockify), `gather_metrics` (Sheets),
-  `generate_content` (LLM)
+- **Nodes:** `gather_time` (Supabase), `gather_metrics` (Supabase),
+  `generate_content` (Groq Llama 3.3 / Gemini Fallback)
 
 ---
 

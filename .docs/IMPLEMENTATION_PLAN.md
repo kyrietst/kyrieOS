@@ -43,24 +43,24 @@ Dados
 - [x] Painel de Insights de IA
 - [x] Gestão de Clientes
 
-### Semana 4 (Extra/Buffer): Portal do Cliente (40h)
+### Semana 4 (Extra/Buffer): Portal do Cliente (40h) - [CONCLUÍDO ✅]
 
 **Objetivo:** Portal transparente para o cliente
 
 **Entregáveis:**
 
-- [ ] Dashboard do Cliente (métricas de negócio)
-- [ ] Tracking de progresso de projetos
-- [ ] Arquivo de relatórios
-- [ ] Tracker de ROI visual
-- [ ] Fila de Aprovação (básico)
-- [ ] Responsividade Mobile
+- [x] Dashboard do Cliente (métricas de negócio) - [Via /client/dashboard]
+- [x] Tracking de progresso de projetos - [Via /client/projects]
+- [x] Arquivo de relatórios - [Via /client/reports]
+- [x] Tracker de ROI visual - [Via Dashboard]
+- [x] Fila de Aprovação (básico) - [Via Projetos]
+- [ ] Responsividade Mobile - [Pendente Auditoria]
 
 **Critérios de Sucesso:**
 
-- Cliente vê APENAS seus próprios dados (RLS funcionando)
-- ROI exibido de forma clara e motivadora
-- Relatórios antigos acessíveis
+- [x] Cliente vê APENAS seus próprios dados (RLS funcionando)
+- [x] ROI exibido de forma clara e motivadora
+- [x] Relatórios antigos acessíveis
 
 ## Próxima Ação Imediata
 

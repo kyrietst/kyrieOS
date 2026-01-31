@@ -4,6 +4,7 @@ import {
   BarChart3, 
   FolderKanban, 
   FileText, 
+  FileCheck,
   GraduationCap, 
   LogOut,
   Building2
@@ -36,6 +37,12 @@ export default function ClientLayout({
             <Link href="/client/projects">
               <FolderKanban className="w-4 h-4" />
               Meus Projetos
+            </Link>
+          </Button>
+          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent" asChild>
+            <Link href="/client/approvals">
+              <FileCheck className="w-4 h-4" />
+              Aprovações
             </Link>
           </Button>
           <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent" asChild>

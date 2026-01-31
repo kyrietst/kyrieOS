@@ -4,6 +4,7 @@ import {
   LayoutDashboard, 
   Users, 
   ListTodo, 
+  FileCheck,
   Sparkles, 
   LogOut,
   Command
@@ -37,6 +38,12 @@ export default function KyrieLayout({
             <Link href="/kyrie/clients">
               <Users className="w-4 h-4" />
               Gestão de Clientes
+            </Link>
+          </Button>
+          <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent" asChild>
+            <Link href="/kyrie/approvals">
+              <FileCheck className="w-4 h-4" />
+              Aprovações
             </Link>
           </Button>
           <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground hover:bg-sidebar-accent" asChild>

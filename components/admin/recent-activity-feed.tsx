@@ -1,67 +1,66 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { formatDistanceToNow } from 'date-fns'
+import { ptBR } from 'date-fns/locale'
 
 interface ActivityItem {
     id: string
-    user: {
-        name: string
-        avatar?: string
-        initials: string
-    }
-    action: string
-    target: string
-    time: string
+    user_id: string
+    user_name: string
+    action_type: string
+    action_title: string
+    target_name: string
+    created_at: string
 }
 
-const mockActivities: ActivityItem[] = [
-    {
-        id: '1',
-        user: { name: 'Ana Silva', initials: 'AS' },
-        action: 'solicitou',
-        target: 'Relatório de SEO',
-        time: 'há 10 min'
-    },
-    {
-        id: '2',
-        user: { name: 'Marcos Oliveira', initials: 'MO' },
-        action: 'aprovou',
-        target: 'Campanha Q1',
-        time: 'há 45 min'
-    },
-    {
-        id: '3',
-        user: { name: 'Kyrie AI', initials: 'AI' },
-        action: 'gerou',
-        target: 'Insights Semanais',
-        time: 'há 1 hora'
-    },
-    {
-        id: '4',
-        user: { name: 'Julia Santos', initials: 'JS' },
-        action: 'comentou em',
-        target: 'Landing Page V2',
-        time: 'há 2 horas'
-    },
-]
+interface RecentActivityFeedProps {
+    activities?: ActivityItem[]
+}
 
-export function RecentActivityFeed() {
+export function RecentActivityFeed({ activities = [] }: RecentActivityFeedProps) {
+  if (activities.length === 0) {
+      return (
+          <div className="text-center py-8 text-muted-foreground">
+              Nenhuma atividade recente.
+          </div>
+      )
+  }
+
   return (
     <div className="space-y-8">
-      {mockActivities.map((item) => (
+      {activities.map((item) => {
+        // Initials logic
+        const initials = item.user_name 
+            ? item.user_name.split(' ').map((n: string) => n[0]).slice(0, 2).join('')
+            : 'S'
+            
+        return (
         <div key={item.id} className="flex items-center">
           <Avatar className="h-9 w-9">
-            <AvatarImage src={item.user.avatar} alt={item.user.name} />
-            <AvatarFallback className="text-xs bg-primary/10 text-primary">{item.user.initials}</AvatarFallback>
+            {/* Logic for avatar image if available in future */}
+            <AvatarFallback className="text-xs bg-primary/10 text-primary uppercase">{initials}</AvatarFallback>
           </Avatar>
           <div className="ml-4 space-y-1">
             <p className="text-sm font-medium leading-none">
-              <span className="text-foreground">{item.user.name}</span>{" "}
-              <span className="text-muted-foreground">{item.action}</span>{" "}
-              <span className="font-semibold text-primary">{item.target}</span>
+              <span className="text-foreground font-semibold">{item.user_name}</span>{" "}
+              <span className="text-muted-foreground">{mapActionType(item.action_type)}</span>{" "}
+              <span className="font-semibold text-primary">{item.target_name || item.action_title}</span>
             </p>
-            <p className="text-xs text-muted-foreground">{item.time}</p>
+            <p className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(item.created_at), { addSuffix: true, locale: ptBR })}
+            </p>
           </div>
         </div>
-      ))}
+      )})}
     </div>
   )
+}
+
+function mapActionType(type: string) {
+    switch (type) {
+        case 'report_generated': return 'gerou novo relatório'
+        case 'project_created': return 'criou projeto'
+        case 'task_completed': return 'concluiu tarefa'
+        case 'client_updated': return 'atualizou cliente'
+        default: return 'realizou ação em'
+    }
 }

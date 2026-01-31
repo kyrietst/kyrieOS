@@ -1,57 +1,89 @@
-from typing import TypedDict, List, Dict, Any
+from typing import TypedDict, List, Dict, Any, Optional
 import os
+import json
+from datetime import datetime
 from supabase import create_client, Client
 from langgraph.graph import StateGraph, END
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import SystemMessage, HumanMessage
+from groq import Groq
+import google.generativeai as genai
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load env variables
-from pathlib import Path
 env_path = Path(__file__).resolve().parent.parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
-print(f"DEBUG: Loading .env from {env_path}")
 
 # Setup Supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") # Use service role for backend operations
+# Fallback to anon key if service role not present (for dev) - though service role is preferred for writing to protected tables
+if not SUPABASE_KEY:
+    SUPABASE_KEY = os.getenv("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Setup Gemini
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    google_api_key=os.getenv("GEMINI_API_KEY"), # User provided key
-    temperature=0.3
-)
+# Configure Gemini Native SDK
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # --- State Definition ---
 class ReportState(TypedDict):
-    client_id: str
+    client_slug: str # Input: Organization Slug
+    organization_id: Optional[str] # Resolved UUID
+    organization_name: Optional[str]
     week_start: str
     week_end: str
     time_data: List[Dict[str, Any]]
     metrics_data: Dict[str, Any]
+    tasks_data: List[Dict[str, Any]] # New: Tasks completed
     report_output: str
+    report_id: Optional[str] # ID of saved report
     errors: List[str]
 
 # --- Nodes ---
 
+def resolve_context(state: ReportState) -> Dict:
+    """Resolves Organization ID from Slug"""
+    print(f"DEBUG: Resolving context for slug: {state['client_slug']}")
+    try:
+        response = supabase.table("organizations") \
+            .select("id, name") \
+            .eq("slug", state['client_slug']) \
+            .single() \
+            .execute()
+        
+        if response.data:
+            return {
+                "organization_id": response.data['id'], 
+                "organization_name": response.data['name']
+            }
+        else:
+            return {"errors": ["Organization not found for slug: " + state['client_slug']]}
+    except Exception as e:
+        return {"errors": [f"Error resolving context: {str(e)}"]}
+
 def gather_time_data(state: ReportState) -> Dict:
     """Queries real time_entries from Supabase"""
-    print(f"DEBUG: Gathering time for {state['client_id']} from {state['week_start']} to {state['week_end']}")
-    
+    if not state.get("organization_id"):
+        return {} # Skip if context failed
+
+    print(f"DEBUG: Gathering time for {state['organization_name']}")
     try:
-        # Assuming we can filter by user_id linked to client_id or just all tasks for now (MVP)
-        # Ideally, we verify the user belongs to the client organization.
-        # For this MVP, we will query all entries in the date range (demo mode)
-        # or filter by metadata if we passed a user_id. 
-        # But ReportState only has client_id. 
+        # Fetch projects for this org first to filter time entries
+        projects_resp = supabase.table("projects") \
+            .select("id") \
+            .eq("organization_id", state['organization_id']) \
+            .execute()
         
-        # TODO: Enhanced logic to map client_id to user_ids.
-        # For now, fetching ALL time entries in range to demonstrate integration.
+        project_ids = [p['id'] for p in projects_resp.data] if projects_resp.data else []
         
+        if not project_ids:
+             return {"time_data": []}
+
+        # Query time entries for these projects
         response = supabase.table("time_entries") \
             .select("*, projects(name)") \
+            .in_("project_id", project_ids) \
             .gte("start_time", state['week_start']) \
             .lte("start_time", state['week_end']) \
             .execute()
@@ -62,93 +94,204 @@ def gather_time_data(state: ReportState) -> Dict:
         return {"errors": [str(e)]}
 
 def gather_metrics_data(state: ReportState) -> Dict:
-    """Still mocked for now, or could query 'projects' table for status"""
-    print(f"DEBUG: Gathering metrics for {state['client_id']}")
-    
-    # Example: Count active projects for this client
+    """Fetches Business Metrics and Tasks"""
+    if not state.get("organization_id"):
+        return {}
+
     try:
-        # We need to find the organization ID from the client_id (which might be the org slug)
-        response = supabase.table("organizations") \
-            .select("id") \
-            .eq("slug", state['client_id']) \
+        # 1. Fetch Business Metrics (Monthly) - Filter by month of week_end
+        date_obj = datetime.strptime(state['week_end'], "%Y-%m-%d") # Assuming ISO format
+        month = date_obj.month
+        year = date_obj.year
+        
+        metrics_resp = supabase.table("business_metrics") \
+            .select("*") \
+            .eq("organization_id", state['organization_id']) \
+            .eq("period_month", month) \
+            .eq("period_year", year) \
             .execute()
             
-        if response.data:
-            org_id = response.data[0]['id']
-            # Count projects
-            proj_response = supabase.table("projects") \
-                .select("id", count="exact") \
-                .eq("client_id", org_id) \
-                .execute()
-                
-            return {"metrics_data": {"active_projects": proj_response.count, "revenue": "N/A"}}
+        metrics = metrics_resp.data[0] if metrics_resp.data else {}
         
-        return {"metrics_data": {"revenue": 15000, "new_leads": 12}} # Fallback mock
+        # 2. Fetch Tasks Completed in this period
+        projects_resp = supabase.table("projects") \
+            .select("id") \
+            .eq("organization_id", state['organization_id']) \
+            .execute()
+        project_ids = [p['id'] for p in projects_resp.data] if projects_resp.data else []
+        
+        tasks_data = []
+        if project_ids:
+            tasks_resp = supabase.table("tasks") \
+                .select("*, projects(name)") \
+                .in_("project_id", project_ids) \
+                .eq("status", "done") \
+                .gte("completed_at", state['week_start']) \
+                .lte("completed_at", state['week_end']) \
+                .execute()
+            tasks_data = tasks_resp.data
+            
+        return {"metrics_data": metrics, "tasks_data": tasks_data}
+
     except Exception as e:
         return {"errors": [str(e)]}
 
 def generate_report_content(state: ReportState) -> Dict:
     """Uses Gemini to generate Markdown report"""
-    print(f"DEBUG: Generating report using Gemini")
+    if state.get("errors"):
+        return {"report_output": "Falha na geração devido a erros anteriores."}
+        
+    print(f"DEBUG: Generating report using Gemini for {state['organization_name']}")
     
-    if not state.get("time_data"):
-        return {"report_output": "Não foram encontrados registros de tempo para este período."}
-
-    # Prepare context for LLM
+    # Prepare Data Context
     time_summary = ""
     total_seconds = 0
     for entry in state['time_data']:
         duration = entry.get('duration') or 0
         total_seconds += duration
-        proj_name = entry.get('projects', {}).get('name') if entry.get('projects') else "Sem Projeto"
+        proj_name = entry.get('projects', {}).get('name') if entry.get('projects') else "Geral"
         desc = entry.get('task_description') or "Sem descrição"
         time_summary += f"- [{proj_name}] {desc}: {duration/3600:.2f}h\n"
         
     total_hours = total_seconds / 3600
     
+    tasks_summary = ""
+    for task in state.get('tasks_data', []):
+        proj_name = task.get('projects', {}).get('name') if task.get('projects') else "Geral"
+        tasks_summary += f"- [CONCLUÍDO] {task['title']} ({proj_name})\n"
+        
+    metrics_summary = "Nenhum dado financeiro disponível para este mês."
+    if state['metrics_data']:
+        m = state['metrics_data']
+        metrics_summary = f"""
+        - Receita: R$ {m.get('revenue', 0)}
+        - Investimento Ads: R$ {m.get('ad_spend', 0)}
+        - Leads: {m.get('leads_generated', 0)}
+        - CAC: R$ {float(m.get('ad_spend',0))/max(1, m.get('new_customers',1)):.2f} (Est.)
+        """
+
     prompt = f"""
-    Você é o Kyrie OS AI, um assistente executivo de alta performance.
-    Gere um relatório semanal profissional em Markdown para o cliente: {state['client_id']}.
+    ATUE COMO: Kyrie OS AI, consultor de performance para {state['organization_name']}.
+    OBJETIVO: Gerar Relatório de Progresso Semanal.
     
-    Período: {state['week_start']} a {state['week_end']}
+    PERÍODO: {state['week_start']} a {state['week_end']}
     
-    DADOS DE TEMPO (Real do Sistema):
-    Total de Horas: {total_hours:.2f}h
-    Detalhes:
-    {time_summary}
+    DADOS OBTIDOS:
     
-    MÉTRICAS:
-    {state['metrics_data']}
+    1. ESFORÇO TÉCNICO (Time Tracking):
+    Total de Horas Kyrie: {total_hours:.2f}h
+    Atividades:
+    {time_summary if time_summary else "Sem registros de tempo."}
     
-    ESTRUTURA DO RELATÓRIO:
-    1. Resumo Executivo (Tom profissional e direto)
-    2. Detalhamento de Atividades (Use os dados reais acima)
-    3. Próximos Passos (Sugira baseados nas atividades)
+    2. ENTREGAS (Tasks Concluídas):
+    {tasks_summary if tasks_summary else "Sem tarefas concluídas no período."}
     
-    Seja conciso e use formatação rica (negrito, listas).
+    3. RESULTADOS DE NEGÓCIO (Mês Vigente):
+    {metrics_summary}
+    
+    DIRETRIZES:
+    - Use Markdown profissional.
+    - Seção "Resumo": Destaque o impacto do trabalho.
+    - Seção "Entregas": Liste o que foi feito.
+    - Seção "Insights": Analise os números (ex: leads vs investimento).
+    - Seção "Próximos Passos": Sugira ações focadas em ROI.
+    - Tom: Parceiro estratégico, focado em crescimento.
     """
     
+    # --- GROQ IMPLEMENTATION ---
+    client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    model = "llama-3.3-70b-versatile"
+    
+    print(f"INFO: Generating report with Groq ({model})...")
+    
     try:
-        response = llm.invoke([
-            SystemMessage(content="Você é um especialista em relatórios corporativos."),
-            HumanMessage(content=prompt)
-        ])
-        return {"report_output": response.content}
+        completion = client.chat.completions.create(
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Você é um estrategista de negócios experiente."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            model=model,
+            temperature=0.7,
+        )
+        
+        response_text = completion.choices[0].message.content
+        if response_text:
+            return {"report_output": response_text}
+            
     except Exception as e:
-        print(f"LLM Error: {e}")
-        return {"report_output": f"Erro ao gerar relatório com IA: {str(e)}", "errors": [str(e)]}
+        print(f"ERROR: Groq generation failed: {e}")
+        return {"report_output": f"Falha na geração de relatório (Groq). Erro: {e}", "errors": [str(e)]}
+
+def save_report(state: ReportState) -> Dict:
+    """Saves the generated report to Supabase and logs activity"""
+    if state.get("errors") or not state.get("report_output"):
+        return {}
+        
+    print(f"DEBUG: Saving report for {state['organization_name']}")
+    try:
+        # 1. Insert Report
+        report_data = {
+            "organization_id": state['organization_id'],
+            "title": f"Relatório Semanal ({state['week_end']})",
+            "content_markdown": state['report_output'],
+            "summary": "Gerado automaticamente pela AI",
+            "report_type": "weekly",
+            "status": "generated",
+            "period_start": state['week_start'],
+            "period_end": state['week_end'],
+            "metrics_snapshot": {
+                "total_hours": sum(t.get('duration',0) for t in state['time_data'])/3600,
+                "completed_tasks": len(state['tasks_data']),
+                "business_metrics": state['metrics_data']
+            },
+            "ai_model_used": "gemini-1.5-flash"
+        }
+        
+        rep_resp = supabase.table("reports").insert(report_data).execute()
+        report_id = rep_resp.data[0]['id'] if rep_resp.data else None
+        
+        # 2. Log Activity
+        if report_id:
+            supabase.rpc("log_activity", {
+                "p_user_id": None, # System action
+                "p_user_name": "Kyrie AI",
+                "p_org_id": state['organization_id'],
+                "p_type": "report_generated",
+                "p_title": "Relatório Semanal Gerado",
+                "p_description": f"Relatório automático cobrindo {state['week_start']} a {state['week_end']}",
+                "p_target_type": "reports",
+                "p_target_id": report_id,
+                "p_target_name": f"Relatório {state['week_end']}"
+            }).execute()
+            
+        return {"report_id": report_id}
+        
+    except Exception as e:
+        print(f"Error saving report: {e}")
+        return {"errors": [f"Erro ao salvar: {str(e)}"]}
 
 # --- Graph Definition ---
 workflow = StateGraph(ReportState)
 
+workflow.add_node("resolve_context", resolve_context)
 workflow.add_node("gather_time", gather_time_data)
 workflow.add_node("gather_metrics", gather_metrics_data)
 workflow.add_node("generate_report", generate_report_content)
+workflow.add_node("save_report", save_report)
 
-workflow.set_entry_point("gather_time")
+workflow.set_entry_point("resolve_context")
+
+workflow.add_edge("resolve_context", "gather_time")
 workflow.add_edge("gather_time", "gather_metrics")
 workflow.add_edge("gather_metrics", "generate_report")
-workflow.add_edge("generate_report", END)
+workflow.add_edge("generate_report", "save_report")
+workflow.add_edge("save_report", END)
 
 # Compile
 report_generator_app = workflow.compile()

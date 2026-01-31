@@ -39,7 +39,7 @@ export function GlobalTimer() {
         .eq('is_running', true)
         .order('start_time', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (data) {
         setEntryId(data.id);

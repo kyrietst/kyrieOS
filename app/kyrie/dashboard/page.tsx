@@ -1,10 +1,48 @@
+import { createClient } from '@/utils/supabase/server'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { AdminMetricsCard } from "@/components/admin/admin-metrics-card"
 import { RecentActivityFeed } from "@/components/admin/recent-activity-feed"
+import { ClientHealthList } from "@/components/admin/client-health-list"
 import { Users, DollarSign, Activity, Zap, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import Link from 'next/link'
+import { GenerateReportButton } from "@/components/admin/generate-report-button"
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
+  const supabase =  await createClient()
+
+  // 1. Fetch Metrics Data in Parallel
+  const [
+    orgsResponse,
+    projectsResponse,
+    reportsResponse,
+    activitiesResponse,
+    healthResponse
+  ] = await Promise.all([
+    supabase.from('organizations').select('id, monthly_fee, status'),
+    supabase.from('projects').select('id, status'),
+    supabase.from('reports').select('id', { count: 'exact' }),
+    supabase.from('activities').select('*').order('created_at', { ascending: false }).limit(5),
+    supabase.from('client_health').select('*, organizations(name)').order('churn_risk_percentage', { ascending: false }).limit(5)
+  ])
+
+  // 2. Calculate KPIs
+  const activeOrgs = orgsResponse.data?.filter(o => o.status === 'active') || []
+  const mrr = activeOrgs.reduce((sum, org) => sum + (org.monthly_fee || 0), 0)
+  
+  const activeProjects = projectsResponse.data?.filter(p => p.status === 'active' || p.status === 'in_progress').length || 0
+  const totalReports = reportsResponse.count || 0
+
+  // 3. Prepare Lists
+  const recentActivities = activitiesResponse.data || []
+  
+  const healthList = healthResponse.data?.map(h => ({
+      id: h.id,
+      organization_name: h.organizations?.name || 'Desconhecido',
+      health_score: h.health_score,
+      churn_risk_level: h.churn_risk_level
+  })) || []
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -13,12 +51,10 @@ export default function AdminDashboard() {
            <h2 className="text-3xl font-bold tracking-tight">Dashboard Geral</h2>
            <p className="text-muted-foreground mt-1">Visão completa do ecossistema Kyrie OS.</p>
         </div>
+
         <div className="flex items-center gap-2">
             <Button variant="outline">Baixar Relatório Geral</Button>
-            <Button className="bg-purple-600 hover:bg-purple-700">
-                <Zap className="mr-2 h-4 w-4" />
-                Ações Rápidas IA
-            </Button>
+            <GenerateReportButton />
         </div>
       </div>
 
@@ -26,30 +62,30 @@ export default function AdminDashboard() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <AdminMetricsCard 
             title="Clientes Ativos"
-            value="12"
+            value={activeOrgs.length}
             icon={Users}
-            change="+2 este mês"
+            change="+1 este mês (simulado)"
             trend="up"
         />
         <AdminMetricsCard 
-            title="MRR (Estimado)"
-            value="R$ 48.500"
+            title="MRR (Recorrente)"
+            value={`R$ ${mrr.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
             icon={DollarSign}
-            change="+15% vs mês anterior"
+            change="+5% vs mês anterior"
             trend="up"
         />
         <AdminMetricsCard 
             title="Projetos em Execução"
-            value="34"
+            value={activeProjects}
             icon={Activity}
-            description="5 entregas esta semana"
+            description="Projetos ativos ou em andamento"
         />
          <AdminMetricsCard 
             title="Relatórios Gerados"
-            value="128"
+            value={totalReports}
             icon={FileText}
-            change="+12% produtividade"
-            trend="up"
+            change="Total acumulado"
+            trend="neutral"
         />
       </div>
 
@@ -62,30 +98,25 @@ export default function AdminDashboard() {
             <CardTitle>Atividade Recente</CardTitle>
           </CardHeader>
           <CardContent>
-            <RecentActivityFeed />
+            <RecentActivityFeed activities={recentActivities} />
           </CardContent>
         </Card>
 
-        {/* AI Quick Actions / Anomalies (Right/Small) */}
-        <Card className="col-span-3 border-purple-500/20 bg-purple-950/5">
+        {/* Client Health & Insights (Right/Small) */}
+        <Card className="col-span-3 border-purple-500/20 bg-purple-950/5 flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
                 <Zap className="w-5 h-5 text-purple-400" />
-                Insights da IA
+                Saúde dos Clientes
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg bg-orange-500/10 border border-orange-500/20">
-                <h4 className="font-semibold text-orange-200 text-sm mb-1">Atenção Necessária</h4>
-                <p className="text-xs text-orange-200/80">O cliente <strong>TechCorp</strong> teve queda de 15% no engajamento esta semana.</p>
-            </div>
-             <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <h4 className="font-semibold text-emerald-200 text-sm mb-1">Oportunidade</h4>
-                <p className="text-xs text-emerald-200/80">3 clientes atingiram ROI &gt; 5x. Sugestão: Oferecer upgrade de plano.</p>
-            </div>
+          <CardContent className="space-y-6 flex-1">
+            <ClientHealthList clients={healthList} />
             
-            <div className="pt-4">
-                <Button variant="secondary" className="w-full">Ver todos os Insights</Button>
+            <div className="pt-4 mt-auto">
+                <Button variant="secondary" className="w-full" asChild>
+                    <Link href="/kyrie/clients">Ver todos os Clientes</Link>
+                </Button>
             </div>
           </CardContent>
         </Card>
