@@ -1,4 +1,17 @@
-# 🚀 PRD 2.0: KYRIE OS - FEATURES AVANÇADAS
+# 🚀 PRD 2.0: KYRIE OS - FEATURES AVANÇADAS - [PARTIAL / IN PROGRESS]
+
+> **Audit Status (2026-01-30):**
+>
+> - **✅ Approvals System:** Partially Implemented. UI exists
+>   (`ClientApprovalsPage`) and fetches from `approvals` table.
+> - **⚠️ Business Calculator:** "Shell" Implementation.
+>   `calculateBusinessMetrics` exists but uses static logic, not the full
+>   Agent/LLM integration described.
+> - **❌ Notifications:** Not Implemented (Only basic email utility exists, no
+>   smart notification system).
+> - **✅ Real Dashboard Metrics:** Frontend IS using real data! (Verified
+>   `AdminDashboard` and `ClientDashboard` fetching from Supabase). The previous
+>   "hardcoded" status was incorrect.
 
 ## Product Requirements Document
 
@@ -6,7 +19,7 @@
 **Data:** 30 de Janeiro de 2026\
 **Autor:** Gilmar (Kyrie Performance & Resultados)\
 **Dependência:** PRD 1.2 (Concluído ✅)\
-**Status:** Ready for Planning
+**Status:** In Progress
 
 ---
 

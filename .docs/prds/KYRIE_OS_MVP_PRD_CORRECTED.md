@@ -1,10 +1,14 @@
-# 🚀 KYRIE OS - MVP PRD
+# 🚀 KYRIE OS - MVP PRD [COMPLETED]
+
+> **UPDATE (2026-01-30):** This foundational PRD is fully implemented. The
+> system has moved to version 1.2+. Please refer to `KYRIE_OS_PRD_1.2.md` and
+> `KYRIE_OS_PRD_2.0.md` for active requirements.
+
 ## Product Requirements Document
 
-**Version:** MVP 1.0 (Revised - LangGraph)
-**Date:** January 29, 2026  
-**Author:** Gilmar (Kyrie Performance & Resultados)  
-**Development Method:** Vibe Coding 🎵  
+**Version:** MVP 1.0 (Revised - LangGraph) **Date:** January 29, 2026\
+**Author:** Gilmar (Kyrie Performance & Resultados)\
+**Development Method:** Vibe Coding 🎵\
 **Status:** Ready to Ship
 
 ---
@@ -29,23 +33,28 @@
 **"Kyrie OS" - Operating System para Consultorias de Performance**
 
 Um ecossistema completo que:
+
 - ✅ **Unifica gestão interna** (substitui Jira + Trello + ClickUp)
 - ✅ **Portal do cliente** (relatórios + aprovações + comunicação)
 - ✅ **IA integrada** (insights + automações + cálculos)
 - ✅ **Tracking inteligente** (tutoriais + progresso + ROI)
 - ✅ **Elimina ferramentas fragmentadas**
 
-**Diferencial:** Não é "mais um project manager", é um **sistema de inteligência comercial + gestão** que transforma consultoria em máquina de resultados previsíveis.
+**Diferencial:** Não é "mais um project manager", é um **sistema de inteligência
+comercial + gestão** que transforma consultoria em máquina de resultados
+previsíveis.
 
 ### 1.2 Por Que Construir Isso?
 
 **Dor atual:**
+
 - Gilmar gasta 10h/semana em coordenação/relatórios
 - Clientes não veem o trabalho sendo feito (invisível)
 - Relatórios manuais consomem tempo valioso
 - Difícil provar ROI claramente
 
 **Solução:**
+
 - AI agents (LangGraph) fazem relatórios automaticamente
 - Dashboard mostra trabalho em tempo real
 - Métricas de negócio sempre atualizadas
@@ -180,28 +189,29 @@ INTELLIGENCE LAYER (IA embarcada)
 
 ```typescript
 // App único, views diferentes por role
-if (user.role === 'KYRIE_ADMIN') {
+if (user.role === "KYRIE_ADMIN") {
   // Dashboard Kyrie completo
   <KyrieDashboard>
     <AllClients />
     <SprintPlanning />
     <AIInsights />
     <TeamManagement />
-  </KyrieDashboard>
+  </KyrieDashboard>;
 }
 
-if (user.role === 'CLIENT_OWNER') {
+if (user.role === "CLIENT_OWNER") {
   // Portal do cliente
   <ClientPortal>
     <MyReports />
     <TaskProgress />
     <Tutorials />
     <ApprovalQueue />
-  </ClientPortal>
+  </ClientPortal>;
 }
 ```
 
 **Roles no sistema:**
+
 - `KYRIE_ADMIN` - Gilmar (acesso total)
 - `KYRIE_TEAM` - Futuros membros da equipe (futuro)
 - `CLIENT_OWNER` - Dono do negócio (pode aprovar, ver tudo)
@@ -250,6 +260,7 @@ if (user.role === 'CLIENT_OWNER') {
 ```
 
 **Features principais:**
+
 - ✅ Sprint planning visual com drag & drop
 - ✅ Time tracking integrado (mata Clockify)
 - ✅ Cálculo automático ICE + distribuição de tempo
@@ -324,6 +335,7 @@ if (user.role === 'CLIENT_OWNER') {
 ```
 
 **Features principais:**
+
 - ✅ Métricas de negócio em tempo real
 - ✅ ROI visual e calculado automaticamente
 - ✅ Progress bars de projetos
@@ -336,6 +348,7 @@ if (user.role === 'CLIENT_OWNER') {
 ### 3.2 Core Value Propositions
 
 **Para Gilmar:**
+
 - 🎯 **1 sistema substitui 10+ ferramentas** (Trello, Clockify, Sheets, etc)
 - 🤖 **IA embarcada gera relatórios** automaticamente (economiza 4h/semana)
 - 📊 **Dashboard único** para todos os clientes (zero context switching)
@@ -343,6 +356,7 @@ if (user.role === 'CLIENT_OWNER') {
 - 💰 **ROI calculado automaticamente** (prova valor constantemente)
 
 **Para Clientes:**
+
 - 👀 **Transparência total** do trabalho (veem tudo que acontece)
 - 📈 **Métricas de negócio** sempre atualizadas (receita, ROI, conversão)
 - 📱 **Acesso 24/7** ao dashboard (quando quiserem)
@@ -350,6 +364,7 @@ if (user.role === 'CLIENT_OWNER') {
 - 🎓 **Tracking de evolução** (veem próprio progresso)
 
 **Diferencial vs. Concorrentes:**
+
 - ❌ Trello/Jira: Só gestão de tarefas (sem IA, sem relatórios)
 - ❌ ClickUp: Genérico (não focado em consultoria)
 - ❌ Notion: Tudo manual (zero automação)
@@ -687,68 +702,68 @@ DEPLOYMENT:
 ```typescript
 // middleware.ts - Role-based redirect
 
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
+import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req, res })
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
   const {
     data: { session },
-  } = await supabase.auth.getSession()
+  } = await supabase.auth.getSession();
 
   // Not authenticated → redirect to login
-  if (!session && !req.nextUrl.pathname.startsWith('/login')) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  if (!session && !req.nextUrl.pathname.startsWith("/login")) {
+    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   // Authenticated → route by role
   if (session) {
     const { data: user } = await supabase
-      .from('users')
-      .select('role, organization_id')
-      .eq('id', session.user.id)
-      .single()
+      .from("users")
+      .select("role, organization_id")
+      .eq("id", session.user.id)
+      .single();
 
-    const path = req.nextUrl.pathname
+    const path = req.nextUrl.pathname;
 
     // KYRIE_ADMIN routes
-    if (user?.role === 'KYRIE_ADMIN') {
+    if (user?.role === "KYRIE_ADMIN") {
       // Allow access to /kyrie/* routes
-      if (path.startsWith('/client')) {
+      if (path.startsWith("/client")) {
         // Admin trying to access client routes → redirect to admin dashboard
-        return NextResponse.redirect(new URL('/kyrie/dashboard', req.url))
+        return NextResponse.redirect(new URL("/kyrie/dashboard", req.url));
       }
     }
 
     // CLIENT_OWNER routes
-    if (user?.role === 'CLIENT_OWNER') {
+    if (user?.role === "CLIENT_OWNER") {
       // Allow access to /client/* routes
-      if (path.startsWith('/kyrie')) {
+      if (path.startsWith("/kyrie")) {
         // Client trying to access admin routes → redirect to client dashboard
-        return NextResponse.redirect(new URL('/client/dashboard', req.url))
+        return NextResponse.redirect(new URL("/client/dashboard", req.url));
       }
     }
 
     // Root redirect based on role
-    if (path === '/') {
-      if (user?.role === 'KYRIE_ADMIN') {
-        return NextResponse.redirect(new URL('/kyrie/dashboard', req.url))
+    if (path === "/") {
+      if (user?.role === "KYRIE_ADMIN") {
+        return NextResponse.redirect(new URL("/kyrie/dashboard", req.url));
       }
-      if (user?.role === 'CLIENT_OWNER') {
-        return NextResponse.redirect(new URL('/client/dashboard', req.url))
+      if (user?.role === "CLIENT_OWNER") {
+        return NextResponse.redirect(new URL("/client/dashboard", req.url));
       }
     }
   }
 
-  return res
+  return res;
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-}
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+};
 ```
 
 ---
@@ -758,6 +773,7 @@ export const config = {
 ### 6.1 Intelligence Layer Overview
 
 **Kyrie OS tem IA embarcada usando LangGraph:**
+
 - 🤖 Gera relatórios automaticamente (workflows determinísticos)
 - 📊 Calcula ROI e métricas de negócio
 - ⚠️ Detecta clientes em risco (churn prediction)
@@ -1356,6 +1372,7 @@ ROI MENSAL:
 ## 9. OUT OF SCOPE (MVP)
 
 **O que NÃO entra no MVP:**
+
 - ❌ Tutorial system completo (apenas básico)
 - ❌ Approval workflow avançado (sem canvas)
 - ❌ Mobile app nativo (apenas responsive web)
@@ -1367,6 +1384,7 @@ ROI MENSAL:
 - ❌ Advanced analytics (apenas métricas core)
 
 **O que ENTRA no MVP:**
+
 - ✅ **Unified task manager** (mata Trello)
 - ✅ **Time tracking integrado** (mata Clockify)
 - ✅ **Report Generator AI** (LangGraph)
@@ -1376,6 +1394,7 @@ ROI MENSAL:
 - ✅ **Health scoring** (previne churn)
 
 **Integrações Diretas (Sem MCP):**
+
 - Clockify API (HTTP requests)
 - Google Sheets API (Google SDK)
 - Supabase API (Supabase SDK)
@@ -1488,13 +1507,11 @@ Contas/APIs:
 
 ### 12.1 O Que Você Tem Agora
 
-✅ **PRD completo e focado** para MVP do Kyrie OS
-✅ **Posicionamento claro**: Operating System (não "mais um PM tool")
-✅ **Escopo definido**: 3 semanas
-✅ **Stack justificada**: Next.js + FastAPI + Supabase + LangGraph
-✅ **2 AI Agents (LangGraph)**: Report Generator + Business Calculator
-✅ **Roadmap executável**: semana a semana
-✅ **Success metrics**: claros e mensuráveis
+✅ **PRD completo e focado** para MVP do Kyrie OS ✅ **Posicionamento claro**:
+Operating System (não "mais um PM tool") ✅ **Escopo definido**: 3 semanas ✅
+**Stack justificada**: Next.js + FastAPI + Supabase + LangGraph ✅ **2 AI Agents
+(LangGraph)**: Report Generator + Business Calculator ✅ **Roadmap executável**:
+semana a semana ✅ **Success metrics**: claros e mensuráveis
 
 ### 12.2 Diferencial vs. Concorrentes
 
@@ -1529,25 +1546,30 @@ Kyrie OS:
 ### 12.3 Por Que Vai Funcionar
 
 **1. Problema Real Validado**
+
 - Você vive isso diariamente
 - 10+ ferramentas = caos
 - 4h/semana em relatórios = desperdício
 
 **2. Solução Única**
+
 - Não existe nada assim no mercado
 - Unificação + IA (LangGraph) + Foco = diferencial brutal
 
 **3. Tech Stack Moderna**
+
 - Next.js + FastAPI = rápido de desenvolver
 - LangGraph = IA determinística e debugável
 - Supabase = infraestrutura sólida
 
 **4. Validação Imediata**
+
 - 4 clientes prontos para usar
 - Valor mensurável (economiza 4h/semana)
 - ROI claro (elimina ferramentas pagas)
 
 **5. Timing Perfeito**
+
 - IA está no auge
 - Consultores precisam disso
 - Mercado desorganizado
@@ -1571,6 +1593,6 @@ Kyrie OS:
 
 **Kyrie OS - Operating System para Consultorias de Performance.**
 
-*"A melhor ferramenta é aquela que você não precisa trocar."*
+_"A melhor ferramenta é aquela que você não precisa trocar."_
 
 **LET'S BUILD THIS EMPIRE! 🚀💜**

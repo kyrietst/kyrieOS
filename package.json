@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "concurrently -n \"FRONT,BACK\" -c \"cyan,green\" \"npm run dev:frontend\" \"npm run dev:backend\"",
+    "dev:frontend": "next dev",
+    "dev:backend": "powershell -ExecutionPolicy Bypass -File ./start-backend.ps1",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
@@ -11,6 +13,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-avatar": "^1.1.11",
+    "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-select": "^2.2.6",
@@ -26,6 +29,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-hook-form": "^7.71.1",
+    "recharts": "^3.7.0",
+    "resend": "^6.9.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.3.6"
@@ -35,6 +40,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
