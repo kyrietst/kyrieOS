@@ -2,10 +2,11 @@ import { getWikiPages } from '@/actions/wiki'
 import WikiList from '@/components/wiki/WikiList'
 import { createClient } from '@/utils/supabase/server'
 
-export default async function Page({ params }: { params: { slug: string } }) {
+export default async function Page({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const supabase = await createClient()
-  const { data: org } = await supabase.from('organizations').select('id, name').eq('slug', params.slug).single()
-  
+  const { data: org } = await supabase.from('organizations').select('id, name').eq('slug', slug).single()
+
   if (!org) return <div>Client not found</div>
 
   const pages = await getWikiPages(org.id)
@@ -18,7 +19,7 @@ export default async function Page({ params }: { params: { slug: string } }) {
           <p className="text-muted-foreground">Documentação, briefings e processos.</p>
         </div>
       </div>
-      
+
       <WikiList initialPages={pages || []} />
     </div>
   )

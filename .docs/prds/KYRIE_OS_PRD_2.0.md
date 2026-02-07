@@ -31,9 +31,8 @@
 4. [Feature 2: Business Calculator Agent](#4-feature-2-business-calculator-agent)
 5. [Feature 3: Dashboard Cliente Completo](#5-feature-3-dashboard-cliente-completo)
 6. [Feature 4: Notificações Inteligentes](#6-feature-4-notificações-inteligentes)
-7. [Feature 5: Deploy em Produção](#7-feature-5-deploy-em-produção)
-8. [Roadmap de Execução](#8-roadmap-de-execução)
-9. [Critérios de Sucesso](#9-critérios-de-sucesso)
+7. [Roadmap de Execução](#7-roadmap-de-execução)
+8. [Critérios de Sucesso](#8-critérios-de-sucesso)
 
 ---
 
@@ -96,7 +95,7 @@ produção** com:
 1. **Automação** - Fluxos de aprovação que eliminam WhatsApp
 2. **Inteligência** - Agentes que calculam ROI e detectam anomalias
 3. **Comunicação** - Notificações proativas para clientes
-4. **Escala** - Deploy em produção para clientes reais
+
 
 ---
 
@@ -133,12 +132,6 @@ ENTREGÁVEL 4: Notificações Inteligentes
   - Email transacional (relatórios, aprovações)
   - Integração WhatsApp (opcional)
   - Alertas de anomalias
-
-ENTREGÁVEL 5: Deploy em Produção
-  - Frontend: Vercel
-  - Backend: Render/Railway
-  - Domínio personalizado
-  - SSL/HTTPS
 ```
 
 ### 2.3 O Que NÃO Entra (PRD 3.0+)
@@ -722,96 +715,7 @@ export async function sendWeeklyReport(
 
 ---
 
-## 7. FEATURE 5: DEPLOY EM PRODUÇÃO
 
-### 7.1 Arquitetura de Deploy
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    KYRIE OS - PRODUÇÃO                          │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  FRONTEND (Vercel)                                              │
-│  ├── app.kyrie.com.br                                           │
-│  ├── Next.js 14 (App Router)                                    │
-│  ├── Edge Functions                                             │
-│  └── CDN Global                                                 │
-│                                                                  │
-│  BACKEND (Render/Railway)                                       │
-│  ├── api.kyrie.com.br                                           │
-│  ├── FastAPI + Uvicorn                                          │
-│  ├── Auto-scaling                                               │
-│  └── Health checks                                              │
-│                                                                  │
-│  DATABASE (Supabase)                                            │
-│  ├── PostgreSQL gerenciado                                      │
-│  ├── Auth + RLS                                                 │
-│  ├── Storage (arquivos)                                         │
-│  └── Realtime (futuro)                                          │
-│                                                                  │
-│  AI (Groq Cloud)                                                │
-│  ├── llama-3.3-70b-versatile                                    │
-│  └── Rate limits adequados                                      │
-│                                                                  │
-│  EMAIL (Resend)                                                 │
-│  └── Transacional + Marketing                                   │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 7.2 Variáveis de Ambiente (Produção)
-
-```env
-# .env.production
-
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=xxx
-SUPABASE_SERVICE_ROLE_KEY=xxx
-
-# Backend
-NEXT_PUBLIC_API_URL=https://api.kyrie.com.br
-
-# AI
-GROQ_API_KEY=xxx
-
-# Email
-RESEND_API_KEY=xxx
-
-# Analytics (opcional)
-NEXT_PUBLIC_POSTHOG_KEY=xxx
-```
-
-### 7.3 Checklist de Deploy
-
-```yaml
-PRÉ-DEPLOY:
-  [ ] Testes E2E passando
-  [ ] Variáveis de ambiente configuradas
-  [ ] Domínio DNS apontando
-  [ ] SSL certificado
-  [ ] Backup do banco
-  
-DEPLOY FRONTEND (Vercel):
-  [ ] Conectar repositório GitHub
-  [ ] Configurar variáveis de ambiente
-  [ ] Deploy automático na main
-  [ ] Configurar domínio personalizado
-  
-DEPLOY BACKEND (Render):
-  [ ] Criar Web Service
-  [ ] Configurar Dockerfile ou start command
-  [ ] Variáveis de ambiente
-  [ ] Health check endpoint
-  [ ] Auto-deploy da branch main
-  
-PÓS-DEPLOY:
-  [ ] Testar login/logout
-  [ ] Testar geração de relatório
-  [ ] Testar upload de arquivos
-  [ ] Monitoramento ativo
-  [ ] Alertas configurados
-```
 
 ---
 
@@ -844,12 +748,12 @@ PÓS-DEPLOY:
 │  Dia 4-5: Sistema de Notificações                               │
 │  Dia 6-7: Integração Resend (email)                             │
 │                                                                  │
-│  SEMANA 4: Deploy + Polish                                      │
+│                                                                  │
+│  SEMANA 4: Polish + Documentação                                │
 │  ═════════════════════════                                      │
-│  Dia 1-2: Deploy Vercel (frontend)                              │
-│  Dia 3-4: Deploy Render (backend)                               │
-│  Dia 5-6: Testes E2E em produção                                │
-│  Dia 7: Documentação + Onboarding                               │
+│  Dia 1-3: Refinamentos UI/UX                                    │
+│  Dia 4-5: Testes E2E Locais                                     │
+│  Dia 6-7: Documentação + Onboarding                             │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -862,8 +766,7 @@ PÓS-DEPLOY:
 | Business Calculator   | 15-20h          | 🟡 Média     |
 | Dashboard Completo    | 10-15h          | 🟢 Baixa     |
 | Notificações          | 10-15h          | 🟢 Baixa     |
-| Deploy Produção       | 8-12h           | 🟢 Baixa     |
-| **TOTAL**             | **63-87h**      |              |
+| **TOTAL**             | **55-75h**      |              |
 
 ### 8.3 Dependências e Ordem
 
@@ -873,7 +776,6 @@ Ordem de Implementação:
   2. Business Calculator (gera dados para dashboard)
   3. Sistema de Aprovações (feature independente)
   4. Notificações (depende de aprovações)
-  5. Deploy (após tudo testado)
 ```
 
 ---
@@ -907,13 +809,6 @@ NOTIFICAÇÕES:
   ✅ Email enviado para novo relatório
   ✅ Badge in-app funciona
   ✅ Lista de notificações acessível
-
-DEPLOY:
-  ✅ Frontend acessível em app.kyrie.com.br
-  ✅ Backend acessível em api.kyrie.com.br
-  ✅ SSL funcionando
-  ✅ Login/logout em produção OK
-  ✅ Geração de relatório em produção OK
 ```
 
 ### 9.2 Métricas de Validação
@@ -922,7 +817,6 @@ DEPLOY:
 | -------------------- | -------------- |
 | Aprovações E2E       | 100% funcional |
 | Tempo de cálculo ROI | < 5s           |
-| Uptime produção      | > 99%          |
 | Emails entregues     | > 95%          |
 | Testes E2E passando  | 100%           |
 
@@ -947,7 +841,6 @@ produção** com:
 1. **Automação** - Sistema de aprovações elimina WhatsApp caótico
 2. **Inteligência** - Calculator Agent fornece ROI e insights em tempo real
 3. **Comunicação** - Notificações proativas mantêm clientes engajados
-4. **Escala** - Deploy em produção permite onboarding de novos clientes
 
 ### 10.2 Impacto para a Kyrie
 
@@ -962,7 +855,6 @@ DEPOIS (MVP 2.0):
   - Plataforma completa de produção
   - Inteligência de negócio automatizada
   - Comunicação centralizada no sistema
-  - Pronto para escalar clientes
 ```
 
 ### 10.3 Próximos Passos

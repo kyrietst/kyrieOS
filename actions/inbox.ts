@@ -25,7 +25,7 @@ export async function markAsRead(id: string) {
     .from('inbox_items')
     .update({ is_read: true, read_at: new Date().toISOString() })
     .eq('id', id)
-  
+
   if (error) throw error
   revalidatePath('/kyrie/inbox')
 }
@@ -36,7 +36,23 @@ export async function archiveItem(id: string) {
     .from('inbox_items')
     .update({ is_archived: true })
     .eq('id', id)
-    
+
   if (error) throw error
   revalidatePath('/kyrie/inbox')
+}
+
+export async function getUnreadInboxCount() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  const { count, error } = await supabase
+    .from('inbox_items')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('is_read', false)
+    .eq('is_archived', false)
+
+  if (error) throw error
+  return count || 0
 }

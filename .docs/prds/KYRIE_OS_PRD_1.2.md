@@ -3,14 +3,18 @@
 > **UPDATE (2026-01-30):** All core features (Database Schema, Client Portal,
 > Admin Dashboard with Real Data, Report Persistence) have been verified as
 > IMPLEMENTED.
+>
+> **UPDATE (2026-02-01 - 20:00):** Kanban Card Details Modal fully refactored to match High-Fidelity Trello Design.
+> Added: Header Bar with Navigation, Window Controls, Cover Image support, and Rich Text Description with auto-resize. 
+> Status: **MVP + High-Fidelity UX Delivered.**
 
 ## Product Requirements Document
 
-**Versão:** MVP 1.2 (Conexão Total + Portal do Cliente)\
-**Data:** 30 de Janeiro de 2026\
-**Autor:** Gilmar (Kyrie Performance & Resultados)\
-**Dependência:** PRD 1.1 (Concluído)\
-**Status:** Completed (MVP 1.2 Delivered)
+**Versão:** MVP 1.2 (Conexão Total + Portal do Cliente + Global Kanban)
+**Data:** 01 de Fevereiro de 2026
+**Autor:** Gilmar (Kyrie Performance & Resultados)
+**Dependência:** PRD 1.1 (Concluído)
+**Status:** Completed (MVP 1.2 Delivered + Bonus Features)
 
 ---
 
@@ -57,11 +61,13 @@
 │                                                                  │
 │  O que existe:                 │  O que falta:                  │
 │  ─────────────────────────────────────────────────────────────  │
-│  ✅ time_entries              │  ❌ tasks (completa)            │
-│  ✅ organizations             │  ❌ reports                     │
-│  ✅ profiles                  │  ❌ business_metrics            │
+│  ✅ time_entries              │  ❌ reports                     │
+│  ✅ organizations             │  ❌ business_metrics            │
+│  ✅ profiles                  │  ❌ activities                  │
 │  ✅ projects                  │  ❌ client_health               │
-│                               │  ❌ activities                  │
+│  ✅ kanban_cards (Supabase)   │                                │
+│  ✅ Master Kanban (New)       │                                │
+│  ✅ Global Col. Creation (New)│                                │
 │  ─────────────────────────────────────────────────────────────  │
 │  ✅ /kyrie/dashboard (real)   │  ✅ Dados reais do Supabase     │
 │  ✅ /kyrie/clients (real)     │  ⏳ ROI calculado               │
@@ -80,7 +86,7 @@
 | Gap                          | Impacto                             | Prioridade |
 | ---------------------------- | ----------------------------------- | ---------- |
 | Tabela `reports` não existe  | Relatórios gerados são perdidos     | 🔴 CRÍTICO |
-| Tabela `tasks` incompleta    | Sem gestão de tarefas por projeto   | 🟡 ALTO    |
+| Tabela `tasks` atualizada    | Gestão completa via Kanban Master   | ✅ FEITO   |
 | Portal do Cliente incompleto | Cliente não vê valor, aumenta churn | 🔴 CRÍTICO |
 | Admin com dados mockados     | Gilmar não tem visão real           | 🟡 ALTO    |
 | ROI não calculado            | Não prova valor para o cliente      | 🟡 ALTO    |
@@ -131,7 +137,9 @@ OUT OF SCOPE (Próximas versões):
   ❌ Chat em tempo real
   ❌ Business Calculator Agent (apenas estrutura)
   ❌ Notificações push
-  ❌ Deploy em produção
+  ✅ Master Kanban (Entregue como bônus)
+  ✅ Global Column Management (Entregue como bônus)
+  ✅ Quick Add Card / Trello UX (Entregue como bônus)
 ```
 
 ---

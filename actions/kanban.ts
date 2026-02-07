@@ -11,14 +11,14 @@ export async function getKanbanColumns(organizationId: string) {
     .select('*')
     .eq('organization_id', organizationId)
     .order('position')
-  
+
   if (error) throw error
   return data
 }
 
 export async function createKanbanColumn(organizationId: string, name: string) {
   const supabase = await createClient()
-  
+
   // Get max position
   const { data: maxPosData } = await supabase
     .from('kanban_columns')
@@ -26,7 +26,7 @@ export async function createKanbanColumn(organizationId: string, name: string) {
     .eq('organization_id', organizationId)
     .order('position', { ascending: false })
     .limit(1)
-    
+
   const nextPos = (maxPosData?.[0]?.position ?? -1) + 1
 
   const { data, error } = await supabase
@@ -36,8 +36,51 @@ export async function createKanbanColumn(organizationId: string, name: string) {
     .single()
 
   if (error) throw error
+  revalidatePath('/kyrie') // Revalidate everything under kyrie to be safe, or targeted.
+  // Targeted paths:
+  revalidatePath('/kyrie/workspace/kanban')
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   return data
+}
+
+// Alias for UX consistency (and Global Create Logic)
+export async function createColumn(organizationId: string, name: string, position?: number) {
+  const supabase = await createClient()
+
+  if (organizationId === 'master') {
+    // 1. Fetch all organizations
+    const { data: orgs, error: orgsError } = await supabase
+      .from('organizations')
+      .select('id')
+
+    if (orgsError) throw orgsError
+
+    // 2. For each org, create the column
+    // We do this sequentially or Promise.all. Promise.all is faster.
+    const promises = orgs.map(async (org) => {
+      // Get max position for THIS org
+      const { data: maxPosData } = await supabase
+        .from('kanban_columns')
+        .select('position')
+        .eq('organization_id', org.id)
+        .order('position', { ascending: false })
+        .limit(1)
+
+      const nextPos = (maxPosData?.[0]?.position ?? -1) + 1
+
+      return supabase
+        .from('kanban_columns')
+        .insert({ organization_id: org.id, name, position: nextPos })
+    })
+
+    await Promise.all(promises)
+
+    revalidatePath('/kyrie')
+    return { success: true, message: 'Columns created globally' }
+  } else {
+    // Normal single-org behavior
+    return createKanbanColumn(organizationId, name)
+  }
 }
 
 // Cards
@@ -47,8 +90,9 @@ export async function getKanbanCards(organizationId: string) {
     .from('kanban_cards')
     .select('*')
     .eq('organization_id', organizationId)
+    .eq('is_archived', false)
     .order('position')
-    
+
   if (error) throw error
   return data
 }
@@ -60,7 +104,7 @@ export async function createKanbanCard(cardData: any) {
     .insert(cardData)
     .select()
     .single()
-    
+
   if (error) throw error
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   return data
@@ -72,7 +116,197 @@ export async function moveCard(cardId: string, columnId: string, position: numbe
     .from('kanban_cards')
     .update({ column_id: columnId, position })
     .eq('id', cardId)
-    
+
   if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+export async function toggleCardCompletion(cardId: string, currentColumnId: string, organizationId: string) {
+  const supabase = await createClient()
+
+  // 1. Get all columns for this org to identify "Todo" and "Done"
+  const { data: cols } = await supabase
+    .from('kanban_columns')
+    .select('*')
+    .eq('organization_id', organizationId)
+    .order('position')
+
+  if (!cols) throw new Error('Columns not found')
+
+  // Naively assume first is Todo, last is Done if not flagged. 
+  // Ideally we check for a flag 'is_done_column'.
+  // Let's assume the user wants to toggle between the *current* column and the *Done* column (or *Todo* if already Done).
+
+  const doneCol = cols.find(c => c.is_done_column) || cols[cols.length - 1]
+  const todoCol = cols[0]
+
+  if (!doneCol || !todoCol) throw new Error('Cannot determine Done/Todo columns')
+
+  const isCurrentlyDone = currentColumnId === doneCol.id
+  const targetColId = isCurrentlyDone ? todoCol.id : doneCol.id
+
+  // 2. Move the card
+  // We append to the end of the target column (position = 9999 or count + 1)
+  await moveCard(cardId, targetColId, 9999)
+}
+
+// Helper for Master Kanban Dropdown
+export async function getOrganizationsSimple() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('organizations')
+    .select('id, name')
+    .eq('status', 'active')
+    .order('name')
+
+  if (error) throw error
+  return data
+}
+
+// Smart Create for Master View
+export async function createCardFromMaster(
+  targetOrganizationId: string,
+  title: string,
+  targetPosition: number
+) {
+  const supabase = await createClient()
+
+  // 1. Find the real column ID in the target org at the target position
+  // We try to match position exactly. 
+  // If not found (e.g. standard todo/doing/done mapping might be fuzzy), we fallback to logic.
+
+  let { data: column } = await supabase
+    .from('kanban_columns')
+    .select('id')
+    .eq('organization_id', targetOrganizationId)
+    .eq('position', targetPosition)
+    .single()
+
+  // Fallback: If exact position not found, try to find "Todo" if position was 0, or just the first column
+  if (!column) {
+    const { data: firstCol } = await supabase
+      .from('kanban_columns')
+      .select('id')
+      .eq('organization_id', targetOrganizationId)
+      .order('position')
+      .limit(1)
+      .single()
+
+    if (!firstCol) throw new Error('Target organization has no columns')
+    column = firstCol
+  }
+
+  // 2. Create the card
+  return createKanbanCard({
+    organization_id: targetOrganizationId,
+    column_id: column.id,
+    title,
+    position: 99999 // Append to end
+  })
+}
+
+// Quick Actions
+export async function duplicateCard(cardId: string, targetColumnId: string) {
+  const supabase = await createClient()
+
+  // 1. Fetch original card
+  const { data: originalCard, error: fetchError } = await supabase
+    .from('kanban_cards')
+    .select('*')
+    .eq('id', cardId)
+    .single()
+
+  if (fetchError) {
+    console.error('Error fetching card to duplicate:', fetchError)
+    throw fetchError
+  }
+  if (!originalCard) throw new Error('Card not found')
+
+  // 2. Get max position in target column
+  const { data: maxPosData } = await supabase
+    .from('kanban_cards')
+    .select('position')
+    .eq('column_id', targetColumnId)
+    .order('position', { ascending: false })
+    .limit(1)
+
+  const nextPos = (maxPosData?.[0]?.position ?? -1) + 1
+
+  // 3. Create copy
+  // Remove system fields to generate new ones
+  const {
+    id,
+    created_at,
+    updated_at,
+    completed_at,
+    trello_card_id,
+    ice_score, // Generated column, must be excluded
+    ...cardData
+  } = originalCard
+
+  const { data: newCard, error: createError } = await supabase
+    .from('kanban_cards')
+    .insert({
+      ...cardData,
+      column_id: targetColumnId,
+      title: `${originalCard.title} (Copy)`,
+      position: nextPos,
+      is_archived: false
+    })
+    .select()
+    .single()
+
+  if (createError) {
+    console.error('Error creating duplicate card:', createError)
+    throw createError
+  }
+
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  return newCard
+}
+
+export async function archiveCard(cardId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update({ is_archived: true })
+    .eq('id', cardId)
+
+  if (error) {
+    console.error('Error archiving card:', error)
+    throw error
+  }
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+export async function updateCardColor(cardId: string, color: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update({ cover_color: color })
+    .eq('id', cardId)
+
+  if (error) {
+    console.error('Error updating card color:', error)
+    throw error
+  }
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+export async function updateCardDetails(cardId: string, updates: { title?: string, description?: string }) {
+  const supabase = await createClient()
+
+  if (!updates.title && !updates.description) return
+
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update(updates)
+    .eq('id', cardId)
+
+  if (error) {
+    console.error('Error updating card details:', error)
+    throw error
+  }
+
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }

@@ -6,8 +6,32 @@
 
 **Versão:** 3.0  
 **Data:** 31 de Janeiro de 2026  
-**Status:** Em Planejamento  
+**Status:** 🏗️ EM EXECUÇÃO  
 **Autor:** Gilmar @ Kyrie Performance & Resultados  
+
+---
+
+> **🚀 Status da Implementação (01/02/2026):**
+> 
+> **✅ CONCLUÍDO:**
+> - **Nova Sidebar:** Hierarquia Workspace/Clientes/Operacional implementada com Avatares.
+> - **Runtime Fix (Next.js 15):** Rotas dinâmicas (`/clients/[slug]/...`) corrigidas para usar `await params`.
+> - **Kanban por Cliente:** 
+>     - Banco de dados (Tables + Policies).
+>     - UI de Board com colunas e cards renderizando.
+>     - Seed de dados iniciais para "Adega Anita's".
+> - **Inbox Unificado:** Badge de contagem real implementado.
+> - **Kyrie AI:** Interface de Chat funcional (Smoke Test aprovado).
+> - **Wiki por Cliente:** Estrutura de páginas e listagem básica.
+> 
+> **🚧 EM PROGRESSO:**
+> - **Kanban DnD:** Implementar persistência de movimento de cards (Drag-and-drop).
+> - **Kyrie AI RAG:** Integração real com embeddings e busca vetorial.
+> - **Wiki Editor:** Editor de conteúdo Markdown completo.
+> 
+> **⏳ PENDENTE:**
+> - **Migração Trello:** Scripts de importação via API.
+> - **Refinamentos UI:** Polimento visual e transições.
 
 ---
 
@@ -981,19 +1005,19 @@ Semana 3: Kanban Completo
   - [ ] Colunas customizáveis
 
 Semana 4: Inbox + Meu Trabalho
-  - [ ] Schema inbox_items
-  - [ ] Página Inbox
+  - [x] Schema inbox_items
+  - [x] Página Inbox
   - [ ] Triggers para popular inbox
   - [ ] Página Meu Trabalho
 
 Semana 5: Wiki
-  - [ ] Schema wiki_pages
+  - [x] Schema wiki_pages
   - [ ] Editor Markdown
-  - [ ] Navegação hierárquica
+  - [x] Navegação hierárquica (básica)
   - [ ] Embeddings para RAG
 
 Semana 6: Kyrie AI + Migração
-  - [ ] Chat interface
+  - [x] Chat interface
   - [ ] RAG com Wiki
   - [ ] Consultas ao Supabase
   - [ ] Importação do Trello
@@ -1007,13 +1031,13 @@ Semana 6: Kyrie AI + Migração
 
 ```yaml
 Nova Sidebar:
-  - [ ] Navegação responsiva
-  - [ ] Clientes expandíveis
-  - [ ] Badge de contagem no Inbox
-  - [ ] Destaque do item ativo
+  - [x] Navegação responsiva
+  - [x] Clientes expandíveis
+  - [x] Badge de contagem no Inbox
+  - [x] Destaque do item ativo
 
 Inbox:
-  - [ ] Lista itens não lidos
+  - [x] Lista itens não lidos
   - [ ] Marcar como lido
   - [ ] Filtrar por tipo
   - [ ] Ação rápida funcional
@@ -1026,14 +1050,14 @@ Kanban:
   - [ ] Filtros funcionais
 
 Kyrie AI:
-  - [ ] Chat funcional
+  - [x] Chat funcional
   - [ ] Consultas de métricas
   - [ ] Consultas de tasks
   - [ ] RAG com Wiki
 
 Wiki:
   - [ ] Criar/editar páginas
-  - [ ] Navegação hierárquica
+  - [x] Navegação hierárquica (básica)
   - [ ] Markdown renderizado
   - [ ] Busca funcional
 

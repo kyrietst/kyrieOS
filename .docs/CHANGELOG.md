@@ -4,6 +4,16 @@ All notable changes to the Kyrie OS project will be documented in this file.
 
 ## [Unreleased]
 
+## [MVP 2.0 - Alpha 2] - 2026-02-01
+
+### Changed
+- **Kanban Card UX:** Refactored cards to match Trello experience (Hidden actions on hover, Quick Complete button).
+- **Kanban Engine:** Replaced custom drag-and-drop with `@dnd-kit` for superior stability and touch support.
+
+### Fixed
+- **Kanban Events:** Fixed issue where clicking action buttons would accidentally open the card modal (Added `stopPropagation`).
+- **Drag & Drop:** Fixed drag listeners preventing interaction with card buttons.
+
 ## [MVP 2.0 - Alpha 1] - 2026-01-31
 
 ### Added
