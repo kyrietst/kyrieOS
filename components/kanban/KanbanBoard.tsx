@@ -10,14 +10,17 @@ import {
   DragStartEvent,
   DragEndEvent,
   DragOverEvent,
-  closestCorners
+  closestCorners,
+  TouchSensor,
+  KeyboardSensor
 } from '@dnd-kit/core'
 import {
   SortableContext,
   arrayMove,
   verticalListSortingStrategy,
   horizontalListSortingStrategy,
-  useSortable
+  useSortable,
+  sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { createPortal } from 'react-dom'
 import { CSS } from '@dnd-kit/utilities'
@@ -29,10 +32,11 @@ import KanbanAddCard from './KanbanAddCard'
 import KanbanCard from './KanbanCard'
 import { moveCard, reorderCardsInColumn, reorderColumns } from '@/actions/kanban'
 import { getUserActiveTimer } from '@/actions/time-tracking'
-import { TimeEntry } from '@/types/kanban'
+import { TimeEntry, KanbanColumn } from '@/types/kanban'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { triggerConfetti } from '@/utils/confetti'
+import { Globe } from 'lucide-react'
 
 // --- Internal Components for Sortable ---
 
@@ -79,6 +83,8 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
         layout: { type: "spring", stiffness: 600, damping: 30 },
         opacity: { duration: 0.2 }
       }}
+      {...attributes}
+      {...listeners}
       className="touch-none"
     >
       <KanbanCard
@@ -101,7 +107,7 @@ function SortableColumn({
   activeTimer,
   onTimerUpdate
 }: {
-  column: any,
+  column: KanbanColumn,
   cards: any[],
   organizationId: string,
   onAddCard: (colId: string) => void,
@@ -137,11 +143,16 @@ function SortableColumn({
   const columnCards = cards.filter(c => {
     if (isMaster) {
       // Map column status to master_status
-      // Our Master Columns are: master-todo, master-doing, master-done
-      // The card.master_status is: todo, doing, done
-      const status = column.status; // We need to ensure columns passed to Board have 'status' field for Master
-      if (!status) return c.column_id === column.id; // Fallback
-      return c.master_status === status;
+      // REAL UUIDs: 97c1ed84... (todo), 1e125d14... (doing), 171c4e37... (done)
+      // The RPC computes master_status based on these.
+      // We map the column object to a status string based on position or existing 'status' property
+      let colStatus = column.status;
+      if (!colStatus) {
+        if (column.position === 0) colStatus = 'todo';
+        else if (column.position === 1) colStatus = 'doing';
+        else if (column.is_done_column || column.position === 2) colStatus = 'done';
+      }
+      return c.master_status === colStatus;
     }
     return c.column_id === column.id
   })
@@ -159,14 +170,20 @@ function SortableColumn({
         {...attributes}
         {...listeners}
         className={cn(
-          "flex items-center justify-between p-3 rounded-t-lg border-b cursor-grab active:cursor-grabbing",
-          column.organization_id === null ? "bg-blue-50/50 border-blue-100" : "bg-muted/50"
+          "flex items-center justify-between p-3 rounded-t-lg border-b cursor-grab active:cursor-grabbing relative overflow-hidden",
+          column.organization_id === null ? "bg-background border-blue-100/50" : "bg-muted/50"
         )}
       >
+        {/* Global Gradient Line */}
+        {column.organization_id === null && (
+          <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-violet-500 to-fuchsia-500" />
+        )}
+
         <h3 className="font-semibold text-sm flex items-center gap-2">
+          {column.organization_id === null && <Globe className="h-3.5 w-3.5 text-violet-500" />}
           {column.name}
           {column.organization_id === null && (
-            <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded uppercase tracking-tighter">Global</span>
+            <span className="text-[9px] border border-violet-100 text-violet-600 px-1.5 py-0 rounded-full font-bold uppercase tracking-wider">Global</span>
           )}
           <span className="text-xs text-muted-foreground font-normal">{columnCards.length}</span>
         </h3>
@@ -237,7 +254,16 @@ export default function KanbanBoard({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5, // 5px movement required to start drag
+        distance: 8, // 8px movement required to start drag
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // 250ms hold to start drag on mobile
+        tolerance: 5,
       },
     })
   )
@@ -393,11 +419,25 @@ export default function KanbanBoard({
         }
       }
 
-      // CELEBRATION: If moved to a "done" column, trigger confetti
+      // CELEBRATION: If moved to a "done" column, trigger confetti + flash
       const targetCol = columns.find(c => c.id === targetColumnId)
-      if (targetCol?.is_done_column || targetCol?.name.toLowerCase().includes('done') || targetCol?.name.toLowerCase().includes('concluido')) {
-        // Trello style side burst or center? Let's do a center-ish burst
+      const isDone = targetCol?.is_done_column || targetCol?.name.toLowerCase().includes('done') || targetCol?.name.toLowerCase().includes('concluido')
+
+      if (isDone) {
+        // Trigger confetti
         triggerConfetti()
+
+        // Trigger visual flash on the specific card
+        setCards(prev => prev.map(c =>
+          c.id === activeId ? { ...c, justDropped: true } : c
+        ))
+
+        // Cleanup flash after 1s
+        setTimeout(() => {
+          setCards(prev => prev.map(c =>
+            c.id === activeId ? { ...c, justDropped: false } : c
+          ))
+        }, 1100)
       }
     } catch (error) {
       console.error("Failed to move/reorder card", error)
@@ -454,17 +494,17 @@ export default function KanbanBoard({
         {/* Drag Overlay */}
         {mounted && createPortal(
           <DragOverlay zIndex={1000} dropAnimation={{
-            duration: 500,
+            duration: 400,
             easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
           }}>
             {activeDragCard ? (
               <motion.div
                 initial={{ scale: 1, rotate: 0 }}
-                animate={{ scale: 1.05, rotate: 3 }}
+                animate={{ scale: 1.05, rotate: 2 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
                 className="cursor-grabbing w-[300px] pointer-events-none"
                 style={{
-                  boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
-                  filter: 'drop-shadow(0 25px 25px rgb(0 0 0 / 0.15))'
+                  filter: 'drop-shadow(0 25px 25px rgb(0 0 0 / 0.15)) drop-shadow(0 10px 10px rgb(0 0 0 / 0.1))'
                 }}
               >
                 <KanbanCard

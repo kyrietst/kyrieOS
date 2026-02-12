@@ -1,7 +1,7 @@
 
 export interface KanbanColumn {
     id: string;
-    organization_id: string;
+    organization_id: string | null;
     name: string;
     position: number;
     is_default: boolean;
@@ -9,6 +9,7 @@ export interface KanbanColumn {
     color?: string;
     icon?: string;
     wip_limit?: number | null;
+    status?: 'todo' | 'doing' | 'done' | 'backlog';
     created_at?: string;
     updated_at?: string;
 }

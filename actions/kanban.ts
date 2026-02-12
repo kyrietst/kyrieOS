@@ -90,6 +90,7 @@ export async function moveCard(cardId: string, columnId: string, position: numbe
     .eq('id', cardId)
 
   if (error) throw error
+  revalidatePath('/kyrie/workspace/kanban')
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }
 
@@ -105,6 +106,7 @@ export async function reorderCardsInColumn(cards: { id: string, position: number
   )
 
   await Promise.all(updates)
+  revalidatePath('/kyrie/workspace/kanban')
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }
 

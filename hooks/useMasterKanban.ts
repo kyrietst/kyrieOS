@@ -1,12 +1,12 @@
-
 import { useState, useEffect } from 'react';
-import { MasterKanbanCard } from '../types/kanban';
+import { MasterKanbanCard, KanbanColumn } from '../types/kanban';
 import { toast } from 'sonner';
-import { fetchMasterKanban } from '@/actions/master-kanban';
+import { fetchMasterKanban, getGlobalColumns } from '@/actions/master-kanban';
 
 
 export function useMasterKanban() {
     const [cards, setCards] = useState<MasterKanbanCard[]>([]);
+    const [columns, setColumns] = useState<KanbanColumn[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
@@ -22,12 +22,18 @@ export function useMasterKanban() {
     async function loadData() {
         setIsLoading(true);
         try {
-            const response = await fetchMasterKanban({
-                page,
-                pageSize: 50,
-                search: filters.search,
-                status: filters.status
-            });
+            // Fetch Columns and Cards in parallel
+            const [colsData, response] = await Promise.all([
+                getGlobalColumns(),
+                fetchMasterKanban({
+                    page,
+                    pageSize: 50,
+                    search: filters.search,
+                    status: filters.status
+                })
+            ]);
+
+            setColumns(colsData);
 
             if (page === 1) {
                 setCards(response.data);
@@ -61,14 +67,6 @@ export function useMasterKanban() {
         setFilters(prev => ({ ...prev, ...newFilters }));
         setPage(1); // Reset to first page on filter change
     };
-
-    // Columns are now static/virtual based on our text definitions
-    // We can return simple definitions for the UI to render columns
-    const columns = [
-        { id: 'master-todo', title: 'A Fazer', status: 'todo' },
-        { id: 'master-doing', title: 'Em Progresso', status: 'doing' },
-        { id: 'master-done', title: 'Concluído', status: 'done' }
-    ];
 
     return {
         columns,

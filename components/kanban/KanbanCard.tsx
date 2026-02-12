@@ -24,11 +24,12 @@ import { assignCard, archiveCard, updateCardDetails } from '@/actions/kanban'
 import { createClient } from '@/utils/supabase/client'
 import { Textarea } from '@/components/ui/textarea'
 import { triggerConfetti } from '@/utils/confetti'
+import { motion, AnimatePresence } from 'framer-motion'
+import { KanbanColumn } from '@/types/kanban'
 
-// Define interfaces locally if not available globally, or rely on usage
 interface KanbanCardProps {
     card: any // Typing broadly to accept Master and Client cards
-    onClick: () => void // This onClick is used for LEFT CLICK on the card itself, likely for drag or simple selection? Or maybe it WAS intended to open details?
+    onClick: () => void
     isMasterView: boolean
     hideActions?: boolean
     activeTimer?: TimeEntry | null
@@ -171,209 +172,201 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
     return (
         <>
             <KanbanCardMenu card={card} onOpen={() => setShowDetails(true)}>
-                <Card
-                    className={cn(
-                        "group cursor-pointer relative transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:shadow-md",
-                        isToggling && "opacity-50 pointer-events-none",
-                        isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20"
-                    )}
-                    onClick={(e) => {
-                        if (isEditingTitle) return;
-                        e.stopPropagation(); // Prevent drag or parent click
-                        setShowDetails(true);
-                    }}
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
+                <motion.div
+                    whileHover={{ y: -4 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 >
-                    {/* Pencil icon for Quick Edit */}
-                    {!hideActions && !isEditingTitle && (
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsEditingTitle(true);
-                            }}
-                            className="absolute top-2 right-2 p-1 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent z-40 shadow-sm border"
-                            title="Edição rápida"
-                        >
-                            <Pencil className="h-3 w-3 text-muted-foreground" />
-                        </button>
-                    )}
+                    <Card
+                        className={cn(
+                            "group cursor-pointer relative transition-all duration-300 border-border/60 hover:border-primary/40 hover:shadow-xl dark:hover:shadow-primary/5 bg-card/80 backdrop-blur-sm",
+                            isToggling && "opacity-50 pointer-events-none",
+                            isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20",
+                            card.justDropped && "animate-success-flash"
+                        )}
+                        onClick={(e) => {
+                            if (isEditingTitle) return;
+                            setShowDetails(true);
+                        }}
+                        onMouseEnter={() => setIsHovered(true)}
+                        onMouseLeave={() => setIsHovered(false)}
+                    >
+                        {/* Pencil icon for Quick Edit */}
+                        {!hideActions && !isEditingTitle && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setIsEditingTitle(true);
+                                }}
+                                className="absolute top-2 right-2 p-1.5 rounded-md bg-background/90 opacity-0 group-hover:opacity-100 transition-all hover:bg-accent z-40 shadow-sm border"
+                                title="Edição rápida"
+                            >
+                                <Pencil className="h-3 w-3 text-muted-foreground" />
+                            </button>
+                        )}
 
-                    {/* Color Cover */}
-                    <div className={cn("w-full transition-all", card.cover_color ? "h-2" : "h-0", card.cover_color)} />
+                        {/* Color Cover */}
+                        <div className={cn("w-full transition-all", card.cover_color ? "h-2.5" : "h-0", card.cover_color)} />
 
-                    <CardContent className={cn("p-3 space-y-2", card.cover_color ? "pt-2" : "pt-3")}>
-                        {/* Header: Title */}
-                        <div className="flex items-start justify-between gap-2">
-                            {isEditingTitle ? (
-                                <div className="w-full" onClick={(e) => e.stopPropagation()}>
-                                    <Textarea
-                                        value={editedTitle}
-                                        onChange={(e) => setEditedTitle(e.target.value)}
-                                        onBlur={handleUpdateTitle}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                                e.preventDefault();
-                                                handleUpdateTitle();
-                                            }
-                                            if (e.key === 'Escape') {
-                                                setIsEditingTitle(false);
-                                                setEditedTitle(card.title);
-                                            }
-                                        }}
-                                        className="min-h-[60px] p-1 text-sm font-medium leading-tight resize-none focus-visible:ring-1"
-                                        autoFocus
-                                        disabled={isUpdatingTitle}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="font-medium text-sm leading-tight break-words flex-1 pr-6">
-                                    {card.title}
-                                </div>
-                            )}
-                            {/* Timer Status */}
-                            {isTimerActive && activeTimer && (
-                                <TimerBadge startTime={activeTimer.start_time} />
-                            )}
-                        </div>
-
-                        {/* Metadata Row */}
-                        <div className="flex items-center justify-between mt-2">
-
-                            {/* Left: ICE / Labels */}
-                            <div className="flex gap-1 flex-wrap items-center">
-                                {/* Assignee Avatar */}
-                                <AvatarStack size={20}>
-                                    {card.assigned_to_user && (
-                                        <Avatar>
-                                            <AvatarImage src={card.assigned_to_user.avatar_url || undefined} />
-                                            <AvatarFallback>
-                                                {(card.assigned_to_user.full_name || 'U').substring(0, 2).toUpperCase()}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    )}
-                                </AvatarStack>
-
-                                {card.ice_score && (
-                                    <div className="text-[10px] font-mono text-muted-foreground bg-muted px-1 rounded flex items-center">
-                                        ICE {Number(card.ice_score).toFixed(1)}
+                        <CardContent className={cn("p-3 space-y-3", card.cover_color ? "pt-2" : "pt-3")}>
+                            {/* Header: Title */}
+                            <div className="flex items-start justify-between gap-2">
+                                {isEditingTitle ? (
+                                    <div className="w-full" onClick={(e) => e.stopPropagation()}>
+                                        <Textarea
+                                            value={editedTitle}
+                                            onChange={(e) => setEditedTitle(e.target.value)}
+                                            onBlur={handleUpdateTitle}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleUpdateTitle();
+                                                }
+                                                if (e.key === 'Escape') {
+                                                    setIsEditingTitle(false);
+                                                    setEditedTitle(card.title);
+                                                }
+                                            }}
+                                            className="min-h-[60px] p-2 text-sm font-medium leading-tight resize-none focus-visible:ring-1"
+                                            autoFocus
+                                            disabled={isUpdatingTitle}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="font-semibold text-[13px] leading-snug break-words flex-1 pr-6 text-foreground/90">
+                                        {card.title}
                                     </div>
                                 )}
-
-                                {/* Unified Label Rendering for Master (JSONB) and Client (Joined) */}
-                                {(() => {
-                                    // 1. Master View Labels (Array of {name, color})
-                                    if (Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object') {
-                                        return card.labels.map((l: any, i: number) => (
-                                            <span
-                                                key={i}
-                                                className={cn(
-                                                    "text-[10px] px-1.5 py-0.5 rounded text-white font-medium",
-                                                    l.color || 'bg-gray-500' // Ensure fallback
-                                                )}
-                                            >
-                                                {l.name}
-                                            </span>
-                                        ));
-                                    }
-
-                                    // 2. Client View Labels (kanban_card_labels relation)
-                                    if (card.kanban_card_labels?.length) {
-                                        return card.kanban_card_labels.map((cl: any) => (
-                                            <span
-                                                key={cl.kanban_labels.id}
-                                                className={cn(
-                                                    "text-[10px] px-1.5 py-0.5 rounded text-white font-medium",
-                                                    cl.kanban_labels.color
-                                                )}
-                                            >
-                                                {cl.kanban_labels.name}
-                                            </span>
-                                        ));
-                                    }
-
-                                    // 3. Deprecated Fallback (String array)
-                                    if (Array.isArray(card.labels) && typeof card.labels[0] === 'string') {
-                                        return card.labels.map((l: string) => (
-                                            <span key={l} className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-md">
-                                                {l}
-                                            </span>
-                                        ));
-                                    }
-                                    return null;
-                                })()}
-
-                                {/* Organization Badge (Master View) */}
-                                {isMasterView && card.organization_name && (
-                                    <span
-                                        className={cn(
-                                            "text-[10px] px-1.5 py-0.5 rounded-md text-white font-bold tracking-wider",
-                                            // Simple hased color generator based on name if no color provided
-                                            card.organization_color ||
-                                            (() => {
-                                                const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-rose-500'];
-                                                let hash = 0;
-                                                for (let i = 0; i < card.organization_name.length; i++) {
-                                                    hash = card.organization_name.charCodeAt(i) + ((hash << 5) - hash);
-                                                }
-                                                return colors[Math.abs(hash % colors.length)];
-                                            })()
-                                        )}
-                                        title={card.organization_name}
-                                    >
-                                        {card.organization_name.substring(0, 3).toUpperCase()}
-                                    </span>
+                                {/* Timer Status */}
+                                {isTimerActive && activeTimer && (
+                                    <TimerBadge startTime={activeTimer.start_time} />
                                 )}
                             </div>
 
-                            {/* Play/Stop Button */}
-                            {!hideActions && !isCompletedColumn && (
-                                <button
-                                    onClick={handleQuickStart}
-                                    disabled={isLoadingTimer}
-                                    className={cn(
-                                        "text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 z-30 pointer-events-auto mr-1",
-                                        isTimerActive ? "opacity-100 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40" : "opacity-0 group-hover:opacity-100"
+                            {/* Metadata Row */}
+                            <div className="flex items-center justify-between pt-1">
+
+                                {/* Left: ICE / Labels */}
+                                <div className="flex gap-1.5 flex-wrap items-center">
+                                    {/* Assignee Avatar */}
+                                    {card.assigned_to_user && (
+                                        <AvatarStack size={22}>
+                                            <Avatar className="border-2 border-background">
+                                                <AvatarImage src={card.assigned_to_user.avatar_url || undefined} />
+                                                <AvatarFallback className="text-[8px]">
+                                                    {(card.assigned_to_user.full_name || 'U').substring(0, 2).toUpperCase()}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                        </AvatarStack>
                                     )}
-                                    title={isTimerActive ? "Parar cronômetro" : "Iniciar cronômetro"}
-                                >
-                                    {isLoadingTimer ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : isTimerActive ? (
-                                        <div className="flex items-center justify-center w-4 h-4">
-                                            <div className="bg-current rounded-sm w-2.5 h-2.5" />
+
+                                    {card.ice_score && (
+                                        <div className="text-[9px] font-bold text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded border border-border/40 flex items-center">
+                                            ICE {Number(card.ice_score).toFixed(1)}
                                         </div>
-                                    ) : (
-                                        <Play className="h-4 w-4 fill-current" />
                                     )}
-                                </button>
-                            )}
 
-                            {/* Right: Actions (Complete) */}
-                            {!hideActions && (
-                                <button
-                                    onClick={handleToggleComplete}
-                                    disabled={isToggling}
-                                    type="button"
-                                    className={cn(
-                                        "text-muted-foreground hover:text-green-600 transition-colors opacity-0 group-hover:opacity-100 p-0.5 rounded-full hover:bg-green-100 z-30 pointer-events-auto",
-                                        isToggling && "opacity-100 animate-pulse"
-                                    )}
-                                    title={isCompletedColumn ? "Reabrir tarefa" : "Concluir tarefa"}
-                                >
-                                    {isToggling ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : isCompletedColumn ? (
-                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                    ) : (
-                                        <Circle className="h-4 w-4" />
-                                    )}
-                                </button>
-                            )}
+                                    {/* Unified Label Rendering for Master (JSONB) and Client (Joined) */}
+                                    {(() => {
+                                        // Same logic as before but with slightly better padding/font
+                                        if (Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object') {
+                                            return card.labels.map((l: any, i: number) => (
+                                                <span
+                                                    key={i}
+                                                    className={cn(
+                                                        "text-[9px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm mb-0.5",
+                                                        l.color || 'bg-gray-500'
+                                                    )}
+                                                >
+                                                    {l.name}
+                                                </span>
+                                            ));
+                                        }
 
-                        </div>
-                    </CardContent>
-                </Card>
+                                        if (card.kanban_card_labels?.length) {
+                                            return card.kanban_card_labels.map((cl: any) => (
+                                                <span
+                                                    key={cl.kanban_labels.id}
+                                                    className={cn(
+                                                        "text-[9px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm mb-0.5",
+                                                        cl.kanban_labels.color
+                                                    )}
+                                                >
+                                                    {cl.kanban_labels.name}
+                                                </span>
+                                            ));
+                                        }
+                                        return null;
+                                    })()}
+
+                                    {/* Organization Badge (Master View) */}
+                                    {isMasterView && card.organization_name && (
+                                        <span
+                                            className={cn(
+                                                "text-[9px] px-1.5 py-0.5 rounded font-black tracking-widest text-white shadow-sm",
+                                                card.organization_color ||
+                                                (() => {
+                                                    const colors = ['bg-blue-600', 'bg-purple-600', 'bg-emerald-600', 'bg-orange-600', 'bg-pink-600', 'bg-sky-600', 'bg-indigo-600', 'bg-rose-600'];
+                                                    let hash = 0;
+                                                    for (let i = 0; i < card.organization_name.length; i++) {
+                                                        hash = card.organization_name.charCodeAt(i) + ((hash << 5) - hash);
+                                                    }
+                                                    return colors[Math.abs(hash % colors.length)];
+                                                })()
+                                            )}
+                                        >
+                                            {card.organization_name.substring(0, 3).toUpperCase()}
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Right Buttons Row */}
+                                <div className="flex items-center gap-0.5">
+                                    {/* Play Button */}
+                                    {!hideActions && !isCompletedColumn && (
+                                        <button
+                                            onClick={handleQuickStart}
+                                            disabled={isLoadingTimer}
+                                            className={cn(
+                                                "text-primary/60 hover:text-red-500 transition-all p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 z-30 pointer-events-auto",
+                                                isTimerActive ? "opacity-100 text-red-500 bg-red-50 dark:bg-red-900/20" : "opacity-0 group-hover:opacity-100"
+                                            )}
+                                        >
+                                            {isLoadingTimer ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : isTimerActive ? (
+                                                <div className="flex items-center justify-center w-4 h-4">
+                                                    <div className="bg-current rounded-[1px] w-2.5 h-2.5" />
+                                                </div>
+                                            ) : (
+                                                <Play className="h-3.5 w-3.5 fill-current" />
+                                            )}
+                                        </button>
+                                    )}
+
+                                    {/* Complete Button */}
+                                    {!hideActions && (
+                                        <button
+                                            onClick={handleToggleComplete}
+                                            disabled={isToggling}
+                                            className={cn(
+                                                "text-muted-foreground/40 hover:text-emerald-600 transition-all opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-emerald-50 z-30",
+                                                isToggling && "opacity-100 animate-pulse"
+                                            )}
+                                        >
+                                            {isToggling ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : isCompletedColumn ? (
+                                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                            ) : (
+                                                <Circle className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </motion.div>
             </KanbanCardMenu>
 
             {showDetails && (

@@ -1,7 +1,25 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { MasterKanbanResponse } from '@/types/kanban'
+import { MasterKanbanResponse, KanbanColumn } from '@/types/kanban'
+
+/**
+ * Fetches the 3 Global Columns (org_id IS NULL) used for the Master View.
+ */
+export async function getGlobalColumns(): Promise<KanbanColumn[]> {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+        .from('kanban_columns')
+        .select('*')
+        .is('organization_id', null)
+        .order('position')
+
+    if (error) {
+        console.error('Error fetching global columns:', error)
+        throw error
+    }
+    return data || []
+}
 
 interface FetchMasterKanbanParams {
     page?: number
