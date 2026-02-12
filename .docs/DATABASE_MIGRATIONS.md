@@ -2,6 +2,11 @@
 
 ## Migration 001: Schema Inicial (Fundação)
 
+| Timestamp | Migration File | Description | Status |
+|-----------|----------------|-------------|--------|
+| 20260212 | `20260212_create_kanban_time_entries.sql` | Creates table for card-based timers with user uniqueness constraint. | Applied |
+| 20240129215000 | `20240129215000_create_time_entries.sql` | (Legacy) Original time entries table. | Applied |
+
 Esta migration cria a estrutura base para organizações, usuários e tarefas.
 
 ```sql

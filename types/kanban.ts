@@ -37,6 +37,7 @@ export interface KanbanCard {
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     due_date?: string;
     is_archived?: boolean;
+    assigned_to?: string | null;
     created_at?: string;
     updated_at?: string;
     // Extended for Master View
@@ -82,6 +83,7 @@ export interface MasterKanbanCard {
     ice_score?: number;
     created_at?: string;
     updated_at?: string;
+    assigned_to?: string | null;
     // Organization Data
     organization_name: string;
     organization_slug: string;

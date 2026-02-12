@@ -11,8 +11,19 @@ import { useState } from 'react'
 import { KanbanCardMenu } from './KanbanCardMenu'
 import { KanbanCardDetails } from './KanbanCardDetails'
 import { TimeEntry } from '@/types/kanban'
+import { AvatarStack } from './../ui/avatar-stack'
+import {
+    Avatar,
+    AvatarImage,
+    AvatarFallback
+} from '@/components/ui/avatar'
 import { TimerBadge } from './TimerBadge'
 import { startTimer, stopTimer } from '@/actions/time-tracking'
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts'
+import { assignCard, archiveCard, updateCardDetails } from '@/actions/kanban'
+import { createClient } from '@/utils/supabase/client'
+import { Textarea } from '@/components/ui/textarea'
+import { triggerConfetti } from '@/utils/confetti'
 
 // Define interfaces locally if not available globally, or rely on usage
 interface KanbanCardProps {
@@ -28,6 +39,10 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
     const [isToggling, setIsToggling] = useState(false)
     const [showDetails, setShowDetails] = useState(false)
     const [isLoadingTimer, setIsLoadingTimer] = useState(false)
+    const [isHovered, setIsHovered] = useState(false)
+    const [isEditingTitle, setIsEditingTitle] = useState(false)
+    const [editedTitle, setEditedTitle] = useState(card.title)
+    const [isUpdatingTitle, setIsUpdatingTitle] = useState(false)
 
     // Master cards have 'card_id', Client cards have 'id'
     const validCardId = card.id || card.card_id
@@ -77,6 +92,12 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
         try {
             setIsToggling(true)
             await toggleCardCompletion(card.id, card.column_id, orgId)
+
+            // CELEBRATION
+            if (!card.completed_at) { // If it was pending and now is complete
+                triggerConfetti()
+            }
+
             toast.success("Status do cartão atualizado")
         } catch (error) {
             toast.error("Erro ao atualizar status")
@@ -85,6 +106,65 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
             setIsToggling(false)
         }
     }
+
+    const handleSelfAssign = async () => {
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        const isCurrentlyAssigned = card.assigned_to === user.id
+        const newAssignee = isCurrentlyAssigned ? null : user.id
+
+        try {
+            await assignCard(validCardId, newAssignee)
+            toast.success(isCurrentlyAssigned ? "Desatribuído de você" : "Atribuído a você")
+        } catch (err) {
+            toast.error("Erro ao atualizar atribuição")
+        }
+    }
+
+    const handleArchive = async () => {
+        try {
+            await archiveCard(validCardId)
+            toast.success("Cartão arquivado", {
+                action: {
+                    label: "Desfazer",
+                    onClick: () => {
+                        // In Trello, archive is just is_archived = true. Undo would be setting it to false.
+                        // We'd need an unarchiveCard action, but for now we follow the "Desfazer" pattern if requested.
+                        toast.info("Unarchive não implementado no backend ainda.")
+                    }
+                }
+            })
+        } catch (err) {
+            toast.error("Erro ao arquivar cartão")
+        }
+    }
+
+    const handleUpdateTitle = async () => {
+        if (!editedTitle.trim() || editedTitle === card.title) {
+            setIsEditingTitle(false)
+            setEditedTitle(card.title)
+            return
+        }
+
+        try {
+            setIsUpdatingTitle(true)
+            await updateCardDetails(validCardId, { title: editedTitle.trim() })
+            toast.success("Título atualizado")
+            setIsEditingTitle(false)
+        } catch (err) {
+            toast.error("Erro ao atualizar título")
+        } finally {
+            setIsUpdatingTitle(false)
+        }
+    }
+
+    useKeyboardShortcuts(isHovered, {
+        onAssignSelf: handleSelfAssign,
+        onArchive: handleArchive,
+        onEscape: () => setIsEditingTitle(false)
+    }, !isEditingTitle)
 
     const isCompletedColumn = card.kanban_columns?.is_done_column // This checks if the underlying column is done type
 
@@ -98,20 +178,59 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                         isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20"
                     )}
                     onClick={(e) => {
+                        if (isEditingTitle) return;
                         e.stopPropagation(); // Prevent drag or parent click
                         setShowDetails(true);
-                        // We are NOT calling props.onClick here anymore as requested
                     }}
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
                 >
+                    {/* Pencil icon for Quick Edit */}
+                    {!hideActions && !isEditingTitle && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setIsEditingTitle(true);
+                            }}
+                            className="absolute top-2 right-2 p-1 rounded-md bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-accent z-40 shadow-sm border"
+                            title="Edição rápida"
+                        >
+                            <Pencil className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                    )}
+
                     {/* Color Cover */}
                     <div className={cn("w-full transition-all", card.cover_color ? "h-2" : "h-0", card.cover_color)} />
 
                     <CardContent className={cn("p-3 space-y-2", card.cover_color ? "pt-2" : "pt-3")}>
                         {/* Header: Title */}
                         <div className="flex items-start justify-between gap-2">
-                            <div className="font-medium text-sm leading-tight break-words flex-1">
-                                {card.title}
-                            </div>
+                            {isEditingTitle ? (
+                                <div className="w-full" onClick={(e) => e.stopPropagation()}>
+                                    <Textarea
+                                        value={editedTitle}
+                                        onChange={(e) => setEditedTitle(e.target.value)}
+                                        onBlur={handleUpdateTitle}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                handleUpdateTitle();
+                                            }
+                                            if (e.key === 'Escape') {
+                                                setIsEditingTitle(false);
+                                                setEditedTitle(card.title);
+                                            }
+                                        }}
+                                        className="min-h-[60px] p-1 text-sm font-medium leading-tight resize-none focus-visible:ring-1"
+                                        autoFocus
+                                        disabled={isUpdatingTitle}
+                                    />
+                                </div>
+                            ) : (
+                                <div className="font-medium text-sm leading-tight break-words flex-1 pr-6">
+                                    {card.title}
+                                </div>
+                            )}
                             {/* Timer Status */}
                             {isTimerActive && activeTimer && (
                                 <TimerBadge startTime={activeTimer.start_time} />
@@ -123,6 +242,18 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
 
                             {/* Left: ICE / Labels */}
                             <div className="flex gap-1 flex-wrap items-center">
+                                {/* Assignee Avatar */}
+                                <AvatarStack size={20}>
+                                    {card.assigned_to_user && (
+                                        <Avatar>
+                                            <AvatarImage src={card.assigned_to_user.avatar_url || undefined} />
+                                            <AvatarFallback>
+                                                {(card.assigned_to_user.full_name || 'U').substring(0, 2).toUpperCase()}
+                                            </AvatarFallback>
+                                        </Avatar>
+                                    )}
+                                </AvatarStack>
+
                                 {card.ice_score && (
                                     <div className="text-[10px] font-mono text-muted-foreground bg-muted px-1 rounded flex items-center">
                                         ICE {Number(card.ice_score).toFixed(1)}

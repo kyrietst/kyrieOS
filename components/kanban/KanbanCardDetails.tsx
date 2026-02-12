@@ -3,6 +3,8 @@
 import {
     Dialog,
     DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -55,6 +57,12 @@ import { startTimer, stopTimer, getCardTimeLogs } from '@/actions/time-tracking'
 import { TimeEntry } from '@/types/kanban'
 import { TimerBadge } from './TimerBadge'
 import { LabelPicker } from './LabelPicker'
+import { AvatarStack } from '@/components/ui/avatar-stack'
+import {
+    Avatar,
+    AvatarImage,
+    AvatarFallback
+} from '@/components/ui/avatar'
 import { Clock, Play, Square, History } from 'lucide-react'
 
 interface KanbanCardDetailsProps {
@@ -168,6 +176,9 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-5xl h-[95vh] md:h-auto md:max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#F4F5F7] dark:bg-zinc-900 border-none shadow-2xl">
+                <DialogHeader className="sr-only">
+                    <DialogTitle>{card.title}</DialogTitle>
+                </DialogHeader>
 
                 {/* Cover Image or Color - Trello Style */}
                 {card.cover_color ? (
@@ -321,28 +332,49 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                             </div>
 
                             {/* Metadata (Members/Labels) if visible */}
-                            {(card.labels?.length > 0) && (
-                                <div className="pl-10 flex gap-4">
-                                    {/* Labels */}
+                            <div className="pl-10 flex flex-wrap gap-8">
+                                {/* Members Stack */}
+                                <div className="space-y-1.5">
+                                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Membros</h3>
+                                    <div className="flex items-center gap-2">
+                                        <AvatarStack size={32}>
+                                            {card.assigned_to_user && (
+                                                <Avatar>
+                                                    <AvatarImage src={card.assigned_to_user.avatar_url || undefined} />
+                                                    <AvatarFallback>
+                                                        {(card.assigned_to_user.full_name || 'U').substring(0, 2).toUpperCase()}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                        </AvatarStack>
+                                        <button className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 transition-colors text-muted-foreground">
+                                            <PlusIcon className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Labels */}
+                                {card.kanban_card_labels?.length > 0 && (
                                     <div className="space-y-1.5">
                                         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Etiquetas</h3>
                                         <div className="flex flex-wrap gap-2">
-                                            {card.labels.map((label: string) => (
+                                            {card.kanban_card_labels.map((cl: any) => (
                                                 <Badge
-                                                    key={label}
+                                                    key={cl.kanban_labels.id}
                                                     variant="secondary"
-                                                    className="h-8 px-3 text-sm font-medium hover:bg-secondary/80 cursor-pointer"
+                                                    style={{ backgroundColor: cl.kanban_labels.color + '20', color: cl.kanban_labels.color }}
+                                                    className="h-9 px-3 text-sm font-semibold border-none"
                                                 >
-                                                    {label}
+                                                    {cl.kanban_labels.name}
                                                 </Badge>
                                             ))}
-                                            <button className="h-8 w-8 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 transition-colors text-muted-foreground">
+                                            <button className="h-9 w-9 rounded bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 transition-colors text-muted-foreground">
                                                 <PlusIcon className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
 
                             {/* Time Tracking Section */}
                             <div className="pl-10 pt-4">

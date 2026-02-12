@@ -21,6 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { createPortal } from 'react-dom'
 import { CSS } from '@dnd-kit/utilities'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import KanbanCardModal from './KanbanCardModal'
 import KanbanAddList from './KanbanAddList'
@@ -31,6 +32,7 @@ import { getUserActiveTimer } from '@/actions/time-tracking'
 import { TimeEntry } from '@/types/kanban'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { triggerConfetti } from '@/utils/confetti'
 
 // --- Internal Components for Sortable ---
 
@@ -58,17 +60,27 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
     }
   })
 
-  // dnd-kit transform includes scale usually, but for simple lists translate is safer visually often
   const style = {
     transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.3 : 1,
   }
 
   const isMaster = organizationId === 'master'
 
   return (
-    <div ref={setNodeRef} style={style} className="touch-none">
+    <motion.div
+      ref={setNodeRef}
+      style={style}
+      layout
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: isDragging ? 0.3 : 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{
+        layout: { type: "spring", stiffness: 600, damping: 30 },
+        opacity: { duration: 0.2 }
+      }}
+      className="touch-none"
+    >
       <KanbanCard
         card={card}
         onClick={onClick}
@@ -76,7 +88,7 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
         activeTimer={activeTimer}
         onTimerUpdate={onTimerUpdate}
       />
-    </div>
+    </motion.div>
   )
 }
 
@@ -171,16 +183,18 @@ function SortableColumn({
       {/* Cards List */}
       <div className="flex-1 overflow-y-auto p-2 bg-muted/20 rounded-b-lg space-y-2 min-h-[100px]">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-          {columnCards.map(card => (
-            <SortableCard
-              key={card.id}
-              card={card}
-              organizationId={organizationId}
-              onClick={() => onAddCard(column.id)}
-              activeTimer={activeTimer}
-              onTimerUpdate={onTimerUpdate}
-            />
-          ))}
+          <AnimatePresence mode="popLayout">
+            {columnCards.map(card => (
+              <SortableCard
+                key={card.id || card.card_id}
+                card={card}
+                organizationId={organizationId}
+                onClick={() => onAddCard(column.id)}
+                activeTimer={activeTimer}
+                onTimerUpdate={onTimerUpdate}
+              />
+            ))}
+          </AnimatePresence>
         </SortableContext>
       </div>
 
@@ -378,6 +392,13 @@ export default function KanbanBoard({
           toast.success("Cartão reordenado")
         }
       }
+
+      // CELEBRATION: If moved to a "done" column, trigger confetti
+      const targetCol = columns.find(c => c.id === targetColumnId)
+      if (targetCol?.is_done_column || targetCol?.name.toLowerCase().includes('done') || targetCol?.name.toLowerCase().includes('concluido')) {
+        // Trello style side burst or center? Let's do a center-ish burst
+        triggerConfetti()
+      }
     } catch (error) {
       console.error("Failed to move/reorder card", error)
       toast.error("Erro ao mover cartão")
@@ -432,16 +453,27 @@ export default function KanbanBoard({
 
         {/* Drag Overlay */}
         {mounted && createPortal(
-          <DragOverlay>
+          <DragOverlay zIndex={1000} dropAnimation={{
+            duration: 500,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}>
             {activeDragCard ? (
-              <div className="opacity-80 rotate-2 cursor-grabbing w-[300px]">
+              <motion.div
+                initial={{ scale: 1, rotate: 0 }}
+                animate={{ scale: 1.05, rotate: 3 }}
+                className="cursor-grabbing w-[300px] pointer-events-none"
+                style={{
+                  boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+                  filter: 'drop-shadow(0 25px 25px rgb(0 0 0 / 0.15))'
+                }}
+              >
                 <KanbanCard
                   card={activeDragCard}
                   onClick={() => { }}
                   isMasterView={organizationId === 'master'}
                   hideActions
                 />
-              </div>
+              </motion.div>
             ) : null}
           </DragOverlay>,
           document.body

@@ -101,8 +101,7 @@ export async function getCardTimeLogs(cardId: string) {
       *,
       profiles:user_id (
         full_name,
-        avatar_url,
-        email
+        avatar_url
       )
     `)
         .eq('card_id', cardId)

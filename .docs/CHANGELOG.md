@@ -4,13 +4,24 @@ All notable changes to the Kyrie OS project will be documented in this file.
 
 ## [Unreleased]
 
-## [MVP 2.0 - Alpha 2] - 2026-02-01
+## [v1.3.0-beta] - 2026-02-12
+### Added
+- **Card-based Time Tracking:** New dedicated time tracking system tied to Kanban cards.
+- **Global Control Dock:** Floating dock to manage active timers from any screen.
+- **Visual Cues:** Active cards now glow red and show a "Stop" button.
+- **Database:** New `kanban_time_entries` table with strict consistency rules.
+
+### Changed
+- Refactored `KanbanCard` to handle timer logic directly.
+- Deprecated legacy `GlobalTimer` manual input in favor of card-context timers.
+- Updated `actions/time-tracking.ts` to enforce "Single Active Timer" rule server-side.
+
+## [v1.2.0-beta] - 2026-02-101
 
 ### Changed
 - **Kanban Card UX:** Refactored cards to match Trello experience (Hidden actions on hover, Quick Complete button).
 - **Kanban Engine:** Replaced custom drag-and-drop with `@dnd-kit` for superior stability and touch support.
 
-### Fixed
 - **Kanban Events:** Fixed issue where clicking action buttons would accidentally open the card modal (Added `stopPropagation`).
 - **Drag & Drop:** Fixed drag listeners preventing interaction with card buttons.
 

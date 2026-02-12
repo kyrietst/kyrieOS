@@ -280,6 +280,20 @@ export async function updateCardColor(cardId: string, color: string) {
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }
 
+export async function assignCard(cardId: string, userId: string | null) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update({ assigned_to: userId })
+    .eq('id', cardId)
+
+  if (error) {
+    console.error('Error assigning card:', error)
+    throw error
+  }
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
 export async function updateCardDetails(cardId: string, updates: {
   title?: string,
   description?: string,
