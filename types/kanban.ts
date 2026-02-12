@@ -36,7 +36,8 @@ export interface KanbanCard {
     }>;
     labels?: string[]; // DEPRECATED - mantido para compatibilidade
     priority?: 'low' | 'medium' | 'high' | 'urgent';
-    due_date?: string;
+    estimated_minutes?: number;
+    ice_ease?: number;
     is_archived?: boolean;
     assigned_to?: string | null;
     created_at?: string;
@@ -99,6 +100,10 @@ export interface MasterKanbanCard {
         name: string;
         color: string;
     }>;
+    // Capacity Data
+    estimated_minutes?: number;
+    remaining_load_minutes?: number;
+    total_tracked_minutes?: number;
 }
 
 export interface MasterKanbanResponse {
