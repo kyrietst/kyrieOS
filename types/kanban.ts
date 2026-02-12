@@ -50,6 +50,7 @@ export interface KanbanCard {
     };
 }
 
+
 export interface TimeEntry {
     id: string;
     card_id: string;
@@ -65,4 +66,41 @@ export interface TimeEntry {
         avatar_url: string;
         email: string;
     };
+}
+
+// ==================== MASTER KANBAN TYPES ====================
+
+export interface MasterKanbanCard {
+    card_id: string;
+    title: string;
+    description?: string;
+    position: number;
+    column_id: string;
+    organization_id: string;
+    due_date?: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    ice_score?: number;
+    created_at?: string;
+    updated_at?: string;
+    // Organization Data
+    organization_name: string;
+    organization_slug: string;
+    organization_logo?: string;
+    // Original Column Data
+    original_column_name: string;
+    is_done_column: boolean;
+    // Computed Status
+    master_status: 'todo' | 'doing' | 'done' | 'backlog';
+    // Labels (JSONB)
+    labels: Array<{
+        name: string;
+        color: string;
+    }>;
+}
+
+export interface MasterKanbanResponse {
+    data: MasterKanbanCard[];
+    total: number;
+    page: number;
+    pageSize: number;
 }

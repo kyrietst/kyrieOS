@@ -14,6 +14,18 @@ All notable changes to the Kyrie OS project will be documented in this file.
 - **Kanban Events:** Fixed issue where clicking action buttons would accidentally open the card modal (Added `stopPropagation`).
 - **Drag & Drop:** Fixed drag listeners preventing interaction with card buttons.
 
+## [MVP 2.1 - Master Kanban Refactor] - 2026-02-12
+
+### Added
+- **Global Columns:** Implemented system-wide columns ('A Fazer', 'Em Progresso', 'Concluído') that apply to all organizations.
+- **Master Kanban View:** Unified administrator view for managing tasks across all clients with high performance.
+- **Database Security:** Full Row Level Security (RLS) implementation for Kanban tables.
+- **Visuals:** Added "Global" badges to columns and Organization identifiers to cards in the master view.
+
+### Changed
+- **Kanban Architecture:** Shifted from client-side data aggregation to server-side SQL Views and RPCs.
+- **Data Migration:** Consolidated disparate 'Todo'/'Doing'/'Done' columns from various organizations into the unified Global Columns.
+
 ## [MVP 2.0 - Alpha 1] - 2026-01-31
 
 ### Added

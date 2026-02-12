@@ -9,7 +9,7 @@ export async function getKanbanColumns(organizationId: string) {
   const { data, error } = await supabase
     .from('kanban_columns')
     .select('*')
-    .eq('organization_id', organizationId)
+    .or(`organization_id.eq.${organizationId},organization_id.is.null`)
     .order('position')
 
   if (error) throw error
@@ -45,42 +45,14 @@ export async function createKanbanColumn(organizationId: string, name: string) {
 
 // Alias for UX consistency (and Global Create Logic)
 export async function createColumn(organizationId: string, name: string, position?: number) {
-  const supabase = await createClient()
+  // Legacy logic for "master" global creation removed as we now have true Global Columns.
+  // If we ever need to create a column specifically for "master" context (which shouldn't happen for columns, only cards),
+  // we would handle it here. For now, it's just a pass-through.
 
-  if (organizationId === 'master') {
-    // 1. Fetch all organizations
-    const { data: orgs, error: orgsError } = await supabase
-      .from('organizations')
-      .select('id')
-
-    if (orgsError) throw orgsError
-
-    // 2. For each org, create the column
-    // We do this sequentially or Promise.all. Promise.all is faster.
-    const promises = orgs.map(async (org) => {
-      // Get max position for THIS org
-      const { data: maxPosData } = await supabase
-        .from('kanban_columns')
-        .select('position')
-        .eq('organization_id', org.id)
-        .order('position', { ascending: false })
-        .limit(1)
-
-      const nextPos = (maxPosData?.[0]?.position ?? -1) + 1
-
-      return supabase
-        .from('kanban_columns')
-        .insert({ organization_id: org.id, name, position: nextPos })
-    })
-
-    await Promise.all(promises)
-
-    revalidatePath('/kyrie')
-    return { success: true, message: 'Columns created globally' }
-  } else {
-    // Normal single-org behavior
-    return createKanbanColumn(organizationId, name)
-  }
+  // Note: Creating a TRUE global column (org_id=NULL) requires admin rights and should probably be a separate admin function,
+  // or we handle `organizationId === 'global'` specifically.
+  // But for standard client creation:
+  return createKanbanColumn(organizationId, name)
 }
 
 // Cards

@@ -17,6 +17,12 @@ export function TimerBadge({ startTime, className, variant = 'minimal' }: TimerB
         const updateTimer = () => {
             const start = new Date(startTime).getTime()
             const now = new Date().getTime()
+
+            if (isNaN(start)) {
+                setElapsed("00:00:00")
+                return
+            }
+
             const diff = Math.max(0, Math.floor((now - start) / 1000))
 
             const hours = Math.floor(diff / 3600)

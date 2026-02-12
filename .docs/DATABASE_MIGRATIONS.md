@@ -91,3 +91,37 @@ using (
 4. Criar migration: `npx supabase migration new initial_schema`
 5. Colar o SQL acima no arquivo gerado em `supabase/migrations/`
 6. Push: `npx supabase db push`
+
+## Migration 002: Master Kanban Refactor & Global Columns (2026-02-12)
+
+Refatoração completa do sistema Kanban para suportar **Colunas Globais** e **Master View** de alta performance.
+
+### Arquivos
+- `20260212_master_kanban_refactor.sql`: Implementação de RLS, Views e RPCs.
+- `20260212_global_columns.sql`: Criação de colunas globais e migração de dados.
+
+### Principais Mudanças
+
+#### 1. Row Level Security (RLS)
+Habilitado em todas as tabelas Kanban (`kanban_cards`, `kanban_columns`, etc.).
+- **Admin:** Acesso total.
+- **Usuário:** Acesso apenas à sua organização (e colunas globais para leitura).
+
+#### 2. Colunas Globais
+- `kanban_columns.organization_id` agora aceita `NULL`.
+- Colunas com `organization_id = NULL` são visíveis para todas as organizações.
+- Migração automática de cards das colunas antigas ('todo', 'doing', 'done') para as novas globais.
+
+#### 3. Views e RPCs
+- **View `master_kanban_view`**: Agrega dados de cards, colunas e organizações.
+- **RPC `get_master_kanban`**: Função otimizada para buscar dados paginados e filtrados para o painel administrativo.
+
+```sql
+-- Exemplo de chamada da RPC
+SELECT * FROM get_master_kanban(
+  page := 1,
+  page_size := 50,
+  status_filter := 'doing',
+  search_text := 'Bug'
+);
+```

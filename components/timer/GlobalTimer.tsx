@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createClient } from '@/utils/supabase/client';
-import { Play, Pause, Square, Save, Clock } from 'lucide-react';
+import { Pause, Square, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 
 interface TimeEntry {
@@ -22,42 +21,52 @@ export function GlobalTimer() {
   const [description, setDescription] = useState('');
   const [entryId, setEntryId] = useState<string | null>(null);
   const startTimeRef = useRef<number | null>(null);
-  
-  const supabase = createClient();
+
+  // Cast to any to avoid type errors with 'kanban_time_entries' until types are regenerated
+  const supabase = createClient() as any;
 
   // Load active timer on mount
   useEffect(() => {
     async function loadActiveTimer() {
-        // TODO: Get real user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Use server action to get active timer (consistent with other components)
+      try {
+        // We need a server action or client-side query. 
+        // Client side query to 'kanban_time_entries'
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-      const { data, error } = await supabase
-        .from('time_entries')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('is_running', true)
-        .order('start_time', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        const { data, error } = await supabase
+          .from('kanban_time_entries')
+          .select(`
+                    *,
+                    kanban_cards (
+                        title
+                    )
+                `)
+          .eq('user_id', user.id)
+          .is('end_time', null)
+          .maybeSingle();
 
-      if (data) {
-        setEntryId(data.id);
-        setDescription(data.task_description || '');
-        setIsRunning(true);
-        
-        // Calculate elapsed time correctly
-        const start = new Date(data.start_time).getTime();
-        const now = new Date().getTime();
-        const alreadyElapsed = data.duration || 0;
-        // setElapsed(Math.floor((now - start) / 1000) + alreadyElapsed); // Simplification implies duration stored + current diff
-        // Actually, if it's running, duration might not be updated yet, so we count from start
-        // But if it was paused and resumed, logic is complex. 
-        // For MVP 1.1: Simple start_time based calc
-        setElapsed(Math.floor((now - start) / 1000));
+        if (data) {
+          setEntryId(data.id);
+          // @ts-ignore - Supabase types might not be perfectly inferred yet
+          setDescription((data.kanban_cards?.title as string) || 'Tarefa sem título');
+          setIsRunning(true);
+
+          const start = new Date(data.start_time).getTime();
+          const now = new Date().getTime();
+          setElapsed(Math.floor((now - start) / 1000));
+        }
+      } catch (e) {
+        console.error("Error loading timer", e)
       }
     }
     loadActiveTimer();
+
+    // Poll for external changes (e.g. started via Card)
+    // In a real app we'd use Realtime Subscription, but polling is safer for MVP
+    const pollInterval = setInterval(loadActiveTimer, 5000);
+    return () => clearInterval(pollInterval);
   }, []);
 
   // Timer interval
@@ -71,64 +80,32 @@ export function GlobalTimer() {
     return () => clearInterval(interval);
   }, [isRunning]);
 
-  const toggleTimer = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        toast.error('Você precisa estar logado.');
-        return;
+  const handleStop = async () => {
+    // ONLY STOP allowed from Dock
+    if (!entryId) return;
+
+    // We can use the server action stopTimer() for consistency
+    // But since we are client-side here and have ID, we can also use direct update if preferred.
+    // Let's use direct update to match previous pattern, BUT targeting 'kanban_time_entries'
+
+    const { error } = await supabase
+      .from('kanban_time_entries')
+      .update({
+        end_time: new Date().toISOString(),
+        duration: elapsed
+      })
+      .eq('id', entryId);
+
+    if (error) {
+      toast.error('Erro ao parar: ' + error.message);
+      return;
     }
 
-    if (!isRunning) {
-      // START
-      const { data, error } = await supabase
-        .from('time_entries')
-        .insert({
-          user_id: user.id,
-          task_description: description,
-          start_time: new Date().toISOString(),
-          is_running: true,
-          duration: 0
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        toast.error('Erro ao iniciar: ' + error.message);
-        return;
-      }
-      
-      setEntryId(data.id);
-      setIsRunning(true);
-      setElapsed(0);
-      toast.success('Cronômetro iniciado!');
-    } else {
-      // PAUSE (Update duration and stop)
-      // For MVP, "Pause" stops the entry. Resume would create new or update?
-      // PRD says "Start/Pause". Let's assume Pause = Stop for now to effectively save the session.
-      // Or we can just update is_running=false.
-      
-      if (!entryId) return;
-
-      const { error } = await supabase
-        .from('time_entries')
-        .update({
-            is_running: false,
-            end_time: new Date().toISOString(),
-            duration: elapsed // Save final seconds
-        })
-        .eq('id', entryId);
-
-      if (error) {
-        toast.error('Erro ao pausar: ' + error.message);
-        return;
-      }
-
-      setIsRunning(false);
-      setEntryId(null);
-      setElapsed(0);
-      setDescription('');
-      toast.success('Tarefa salva!');
-    }
+    setIsRunning(false);
+    setEntryId(null);
+    setElapsed(0);
+    setDescription('');
+    toast.success('Tarefa parada');
   };
 
   const formatTime = (seconds: number) => {
@@ -138,42 +115,33 @@ export function GlobalTimer() {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
+  // Hide if not running
+  if (!isRunning) return null;
+
   return (
-    <Card className="fixed bottom-4 right-4 p-4 shadow-xl border-t-2 border-primary w-80 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <Card className="fixed bottom-4 right-4 p-4 shadow-xl border-t-2 border-primary w-80 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 animate-in slide-in-from-bottom-10 fade-in duration-300">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-primary font-bold">
-                <Clock className="w-4 h-4" />
-                <span>Kyrie Tracker</span>
-            </div>
-            <span className="font-mono text-xl tabular-nums">{formatTime(elapsed)}</span>
+          <div className="flex items-center gap-2 text-primary font-bold">
+            <Clock className="w-4 h-4 animate-pulse" />
+            <span>Kyrie Tracker</span>
+          </div>
+          <span className="font-mono text-xl tabular-nums">{formatTime(elapsed)}</span>
         </div>
-        
-        <Input 
-            placeholder="No que você está trabalhando?" 
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            disabled={isRunning}
-            className="h-8 text-sm"
-        />
+
+        <div className="text-sm font-medium text-muted-foreground truncate" title={description}>
+          {description}
+        </div>
 
         <div className="flex justify-end gap-2">
-            <Button 
-                size="sm" 
-                variant={isRunning ? "destructive" : "default"}
-                onClick={toggleTimer}
-                className="w-full"
-            >
-                {isRunning ? (
-                    <>
-                        <Square className="w-4 h-4 mr-2" fill="currentColor" /> Parar
-                    </>
-                ) : (
-                    <>
-                        <Play className="w-4 h-4 mr-2" fill="currentColor" /> Iniciar
-                    </>
-                )}
-            </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={handleStop}
+            className="w-full"
+          >
+            <Square className="w-4 h-4 mr-2" fill="currentColor" /> Parar
+          </Button>
         </div>
       </div>
     </Card>

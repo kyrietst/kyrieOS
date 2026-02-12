@@ -12,7 +12,7 @@ import { KanbanCardMenu } from './KanbanCardMenu'
 import { KanbanCardDetails } from './KanbanCardDetails'
 import { TimeEntry } from '@/types/kanban'
 import { TimerBadge } from './TimerBadge'
-import { startTimer } from '@/actions/time-tracking'
+import { startTimer, stopTimer } from '@/actions/time-tracking'
 
 // Define interfaces locally if not available globally, or rely on usage
 interface KanbanCardProps {
@@ -29,7 +29,11 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
     const [showDetails, setShowDetails] = useState(false)
     const [isLoadingTimer, setIsLoadingTimer] = useState(false)
 
-    const isTimerActive = activeTimer?.card_id === card.id
+    // Master cards have 'card_id', Client cards have 'id'
+    const validCardId = card.id || card.card_id
+
+    // Strict check: activeTimer must exist AND match this card
+    const isTimerActive = !!activeTimer && activeTimer.card_id === validCardId
 
     const handleQuickStart = async (e: React.MouseEvent) => {
         e.stopPropagation()
@@ -38,11 +42,20 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
 
         try {
             setIsLoadingTimer(true)
-            const newTimer = await startTimer(card.id)
-            if (onTimerUpdate) onTimerUpdate(newTimer)
-            toast.success("Cronômetro iniciado")
+
+            if (isTimerActive) {
+                // STOP
+                await stopTimer() // Imports need to be checked if stopTimer is imported
+                if (onTimerUpdate) onTimerUpdate(null)
+                toast.success("Cronômetro parado")
+            } else {
+                // START
+                const newTimer = await startTimer(validCardId)
+                if (onTimerUpdate) onTimerUpdate(newTimer)
+                toast.success("Cronômetro iniciado")
+            }
         } catch (err) {
-            toast.error("Erro ao iniciar timer")
+            toast.error("Erro ao atualizar timer")
         } finally {
             setIsLoadingTimer(false)
         }
@@ -81,7 +94,8 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                 <Card
                     className={cn(
                         "group cursor-pointer relative transition-all duration-200 hover:ring-2 hover:ring-primary/50 hover:shadow-md",
-                        isToggling && "opacity-50 pointer-events-none"
+                        isToggling && "opacity-50 pointer-events-none",
+                        isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20"
                     )}
                     onClick={(e) => {
                         e.stopPropagation(); // Prevent drag or parent click
@@ -115,32 +129,64 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                     </div>
                                 )}
 
-                                {/* Normalized Labels (PRIORITY) */}
-                                {card.kanban_card_labels?.map((cl: any) => (
-                                    <span
-                                        key={cl.kanban_labels.id}
-                                        className={cn(
-                                            "text-[10px] px-1.5 py-0.5 rounded text-white font-medium",
-                                            cl.kanban_labels.color
-                                        )}
-                                    >
-                                        {cl.kanban_labels.name}
-                                    </span>
-                                ))}
+                                {/* Unified Label Rendering for Master (JSONB) and Client (Joined) */}
+                                {(() => {
+                                    // 1. Master View Labels (Array of {name, color})
+                                    if (Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object') {
+                                        return card.labels.map((l: any, i: number) => (
+                                            <span
+                                                key={i}
+                                                className={cn(
+                                                    "text-[10px] px-1.5 py-0.5 rounded text-white font-medium",
+                                                    l.color || 'bg-gray-500' // Ensure fallback
+                                                )}
+                                            >
+                                                {l.name}
+                                            </span>
+                                        ));
+                                    }
 
-                                {/* Fallback: Deprecated labels (if no normalized) */}
-                                {!card.kanban_card_labels?.length && card.labels?.map((l: string) => (
-                                    <span key={l} className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-md">
-                                        {l}
-                                    </span>
-                                ))}
+                                    // 2. Client View Labels (kanban_card_labels relation)
+                                    if (card.kanban_card_labels?.length) {
+                                        return card.kanban_card_labels.map((cl: any) => (
+                                            <span
+                                                key={cl.kanban_labels.id}
+                                                className={cn(
+                                                    "text-[10px] px-1.5 py-0.5 rounded text-white font-medium",
+                                                    cl.kanban_labels.color
+                                                )}
+                                            >
+                                                {cl.kanban_labels.name}
+                                            </span>
+                                        ));
+                                    }
+
+                                    // 3. Deprecated Fallback (String array)
+                                    if (Array.isArray(card.labels) && typeof card.labels[0] === 'string') {
+                                        return card.labels.map((l: string) => (
+                                            <span key={l} className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-md">
+                                                {l}
+                                            </span>
+                                        ));
+                                    }
+                                    return null;
+                                })()}
 
                                 {/* Organization Badge (Master View) */}
                                 {isMasterView && card.organization_name && (
                                     <span
                                         className={cn(
                                             "text-[10px] px-1.5 py-0.5 rounded-md text-white font-bold tracking-wider",
-                                            card.organization_color || 'bg-gray-500'
+                                            // Simple hased color generator based on name if no color provided
+                                            card.organization_color ||
+                                            (() => {
+                                                const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-rose-500'];
+                                                let hash = 0;
+                                                for (let i = 0; i < card.organization_name.length; i++) {
+                                                    hash = card.organization_name.charCodeAt(i) + ((hash << 5) - hash);
+                                                }
+                                                return colors[Math.abs(hash % colors.length)];
+                                            })()
                                         )}
                                         title={card.organization_name}
                                     >
@@ -149,16 +195,23 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                 )}
                             </div>
 
-                            {/* Play Button (Hover Only) */}
-                            {!hideActions && !isTimerActive && !isCompletedColumn && (
+                            {/* Play/Stop Button */}
+                            {!hideActions && !isCompletedColumn && (
                                 <button
                                     onClick={handleQuickStart}
                                     disabled={isLoadingTimer}
-                                    className="text-muted-foreground hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-0.5 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 z-30 pointer-events-auto mr-1"
-                                    title="Iniciar cronômetro rápido"
+                                    className={cn(
+                                        "text-muted-foreground hover:text-red-500 transition-colors p-0.5 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 z-30 pointer-events-auto mr-1",
+                                        isTimerActive ? "opacity-100 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/40" : "opacity-0 group-hover:opacity-100"
+                                    )}
+                                    title={isTimerActive ? "Parar cronômetro" : "Iniciar cronômetro"}
                                 >
                                     {isLoadingTimer ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : isTimerActive ? (
+                                        <div className="flex items-center justify-center w-4 h-4">
+                                            <div className="bg-current rounded-sm w-2.5 h-2.5" />
+                                        </div>
                                     ) : (
                                         <Play className="h-4 w-4 fill-current" />
                                     )}
@@ -196,7 +249,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                 <KanbanCardDetails
                     isOpen={showDetails}
                     onClose={() => setShowDetails(false)}
-                    card={card}
+                    card={{ ...card, id: validCardId }} // Ensure ID is present for Details component
                     activeTimer={activeTimer}
                     onTimerUpdate={onTimerUpdate}
                 />

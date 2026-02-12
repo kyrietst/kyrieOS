@@ -118,8 +118,27 @@ function SortableColumn({
   }
 
   const isMaster = organizationId === 'master'
-  const columnCards = cards.filter(c => c.column_id === column.id)
-  const cardIds = columnCards.map(c => c.id)
+
+  // Filter cards for this column
+  // If Master View: use 'master_status' (mapped to 'todo', 'doing', 'done')
+  // If Client View: use 'column_id'
+  const columnCards = cards.filter(c => {
+    if (isMaster) {
+      // Map column status to master_status
+      // Our Master Columns are: master-todo, master-doing, master-done
+      // The card.master_status is: todo, doing, done
+      const status = column.status; // We need to ensure columns passed to Board have 'status' field for Master
+      if (!status) return c.column_id === column.id; // Fallback
+      return c.master_status === status;
+    }
+    return c.column_id === column.id
+  })
+
+  // Sort by updated_at desc for Master View, or position for regular?
+  // Master View is a feed, regular is a rank.
+  // For now, let's keep array order which comes from the hook (usually sorted).
+
+  const cardIds = columnCards.map(c => c.id || c.card_id) // Support both ID types if needed
 
   return (
     <div ref={setNodeRef} style={style} className="flex flex-col w-[320px] min-w-[320px] shrink-0 h-full">
@@ -127,12 +146,26 @@ function SortableColumn({
       <div
         {...attributes}
         {...listeners}
-        className="flex items-center justify-between p-3 bg-muted/50 rounded-t-lg border-b cursor-grab active:cursor-grabbing"
+        className={cn(
+          "flex items-center justify-between p-3 rounded-t-lg border-b cursor-grab active:cursor-grabbing",
+          column.organization_id === null ? "bg-blue-50/50 border-blue-100" : "bg-muted/50"
+        )}
       >
         <h3 className="font-semibold text-sm flex items-center gap-2">
           {column.name}
+          {column.organization_id === null && (
+            <span className="text-[10px] bg-blue-100 text-blue-700 px-1 rounded uppercase tracking-tighter">Global</span>
+          )}
           <span className="text-xs text-muted-foreground font-normal">{columnCards.length}</span>
         </h3>
+
+        {/* Only show actions if not global or if user is admin (frontend check only, backend secured by RLS) */}
+        {/* For now, just hiding actions for global columns to strictly enforce structure */}
+        {column.organization_id !== null && (
+          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Action buttons (edit/delete) would go here if we had them implemented in this view */}
+          </div>
+        )}
       </div>
 
       {/* Cards List */}
