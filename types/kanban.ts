@@ -8,6 +8,7 @@ export interface KanbanColumn {
     is_done_column: boolean;
     color?: string;
     icon?: string;
+    wip_limit?: number | null;
     created_at?: string;
     updated_at?: string;
 }
@@ -15,19 +16,38 @@ export interface KanbanColumn {
 export interface KanbanCard {
     id: string;
     column_id: string;
+    organization_id: string;
     title: string;
     description?: string;
     position: number;
-    ice_score?: number;
-    labels?: string[];
+    // ICE Score components
+    impact?: number;
+    confidence?: number;
+    effort?: number;
+    ice_score?: number; // Generated column
+    // Labels (normalized)
+    kanban_card_labels?: Array<{
+        kanban_labels: {
+            id: string;
+            name: string;
+            color: string;
+        }
+    }>;
+    labels?: string[]; // DEPRECATED - mantido para compatibilidade
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     due_date?: string;
+    is_archived?: boolean;
     created_at?: string;
     updated_at?: string;
     // Extended for Master View
     organization_name?: string;
     organization_slug?: string;
     organization_color?: string;
+    // Relações
+    kanban_columns?: {
+        name: string;
+        is_done_column: boolean;
+    };
 }
 
 export interface TimeEntry {

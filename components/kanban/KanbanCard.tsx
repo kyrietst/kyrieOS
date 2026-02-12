@@ -115,7 +115,21 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                     </div>
                                 )}
 
-                                {card.labels?.map((l: string) => (
+                                {/* Normalized Labels (PRIORITY) */}
+                                {card.kanban_card_labels?.map((cl: any) => (
+                                    <span
+                                        key={cl.kanban_labels.id}
+                                        className={cn(
+                                            "text-[10px] px-1.5 py-0.5 rounded text-white font-medium",
+                                            cl.kanban_labels.color
+                                        )}
+                                    >
+                                        {cl.kanban_labels.name}
+                                    </span>
+                                ))}
+
+                                {/* Fallback: Deprecated labels (if no normalized) */}
+                                {!card.kanban_card_labels?.length && card.labels?.map((l: string) => (
                                     <span key={l} className="text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary rounded-md">
                                         {l}
                                     </span>

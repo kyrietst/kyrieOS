@@ -54,6 +54,7 @@ import { cn } from '@/lib/utils'
 import { startTimer, stopTimer, getCardTimeLogs } from '@/actions/time-tracking'
 import { TimeEntry } from '@/types/kanban'
 import { TimerBadge } from './TimerBadge'
+import { LabelPicker } from './LabelPicker'
 import { Clock, Play, Square, History } from 'lucide-react'
 
 interface KanbanCardDetailsProps {
@@ -75,6 +76,16 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     const [isTimerLoading, setIsTimerLoading] = useState(false)
     const [timeLogs, setTimeLogs] = useState<TimeEntry[]>([])
     const isTimerActive = activeTimer?.card_id === card.id
+
+    // Label State
+    const [labelIds, setLabelIds] = useState<string[]>(
+        card.kanban_card_labels?.map((cl: any) => cl.kanban_labels.id) || []
+    )
+
+    // ICE Score State
+    const [impact, setImpact] = useState(card.impact || 5)
+    const [confidence, setConfidence] = useState(card.confidence || 5)
+    const [effort, setEffort] = useState(card.effort || 5)
 
     // Fetch Logs on Open
     useEffect(() => {
@@ -127,7 +138,10 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
         try {
             await updateCardDetails(card.id, {
                 title,
-                description: description === '' ? null : description
+                description: description === '' ? null : description,
+                impact,
+                confidence,
+                effort
             })
             toast.success('Alterações salvas')
             setIsEditingDesc(false)
@@ -294,7 +308,12 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                             {/* Horizontal Action Bar */}
                             <div className="pl-10 flex flex-wrap gap-2">
                                 <ActionButton icon={User} label="Membros" />
-                                <ActionButton icon={Tag} label="Etiquetas" />
+                                <LabelPicker
+                                    cardId={card.id}
+                                    organizationId={card.organization_id}
+                                    selectedLabelIds={labelIds}
+                                    onLabelsChange={setLabelIds}
+                                />
                                 <ActionButton icon={CheckSquare} label="Checklist" />
                                 <ActionButton icon={Calendar} label="Datas" />
                                 <ActionButton icon={Paperclip} label="Anexo" />
@@ -376,6 +395,72 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                             </div>
                                         )}
                                     </div>
+                                </div>
+                            </div>
+
+                            {/* ICE Score Section */}
+                            <div className="pl-10 pt-4">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="font-mono font-semibold text-sm">ICE Score</div>
+                                    {(impact && confidence && effort) && (
+                                        <div className="text-lg font-bold text-primary">
+                                            {((impact * confidence) / effort).toFixed(2)}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="bg-slate-50 dark:bg-zinc-900/50 rounded-lg border border-slate-200 dark:border-zinc-800 p-4 space-y-4">
+                                    {/* Impact */}
+                                    <div>
+                                        <label className="text-xs font-semibold text-muted-foreground mb-2 block">
+                                            Impact (1-10): {impact}
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="10"
+                                            value={impact}
+                                            onChange={(e) => setImpact(Number(e.target.value))}
+                                            onMouseUp={handleSave}
+                                            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gradient-to-r from-red-200 to-green-400 dark:from-red-900 dark:to-green-600"
+                                        />
+                                    </div>
+
+                                    {/* Confidence */}
+                                    <div>
+                                        <label className="text-xs font-semibold text-muted-foreground mb-2 block">
+                                            Confidence (1-10): {confidence}
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="10"
+                                            value={confidence}
+                                            onChange={(e) => setConfidence(Number(e.target.value))}
+                                            onMouseUp={handleSave}
+                                            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gradient-to-r from-yellow-200 to-blue-400 dark:from-yellow-900 dark:to-blue-600"
+                                        />
+                                    </div>
+
+                                    {/* Effort */}
+                                    <div>
+                                        <label className="text-xs font-semibold text-muted-foreground mb-2 block">
+                                            Effort (1-10): {effort}
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="10"
+                                            value={effort}
+                                            onChange={(e) => setEffort(Number(e.target.value))}
+                                            onMouseUp={handleSave}
+                                            className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gradient-to-r from-purple-200 to-orange-400 dark:from-purple-900 dark:to-orange-600"
+                                        />
+                                    </div>
+
+                                    <p className="text-xs text-muted-foreground mt-3">
+                                        ICE = (Impact × Confidence) / Effort — Quanto maior, melhor a prioridade
+                                    </p>
                                 </div>
                             </div>
 

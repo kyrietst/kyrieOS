@@ -121,6 +121,21 @@ export async function moveCard(cardId: string, columnId: string, position: numbe
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }
 
+export async function reorderCardsInColumn(cards: { id: string, position: number }[]) {
+  const supabase = await createClient()
+
+  // Batch update positions
+  const updates = cards.map(card =>
+    supabase
+      .from('kanban_cards')
+      .update({ position: card.position })
+      .eq('id', card.id)
+  )
+
+  await Promise.all(updates)
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
 export async function toggleCardCompletion(cardId: string, currentColumnId: string, organizationId: string) {
   const supabase = await createClient()
 
@@ -293,10 +308,16 @@ export async function updateCardColor(cardId: string, color: string) {
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }
 
-export async function updateCardDetails(cardId: string, updates: { title?: string, description?: string }) {
+export async function updateCardDetails(cardId: string, updates: {
+  title?: string,
+  description?: string,
+  impact?: number,
+  confidence?: number,
+  effort?: number
+}) {
   const supabase = await createClient()
 
-  if (!updates.title && !updates.description) return
+  if (!updates.title && !updates.description && !updates.impact && !updates.confidence && !updates.effort) return
 
   const { error } = await supabase
     .from('kanban_cards')
@@ -308,5 +329,74 @@ export async function updateCardDetails(cardId: string, updates: { title?: strin
     throw error
   }
 
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+// ==================== COLUMN MANAGEMENT ====================
+
+export async function updateColumnName(columnId: string, newName: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_columns')
+    .update({ name: newName })
+    .eq('id', columnId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+export async function deleteColumn(columnId: string, moveCardsToColumnId?: string) {
+  const supabase = await createClient()
+
+  if (moveCardsToColumnId) {
+    // Move all cards to another column before deleting
+    const { error: moveError } = await supabase
+      .from('kanban_cards')
+      .update({ column_id: moveCardsToColumnId })
+      .eq('column_id', columnId)
+
+    if (moveError) throw moveError
+  } else {
+    // Archive all cards in this column
+    const { error: archiveError } = await supabase
+      .from('kanban_cards')
+      .update({ is_archived: true })
+      .eq('column_id', columnId)
+
+    if (archiveError) throw archiveError
+  }
+
+  // Delete the column
+  const { error } = await supabase
+    .from('kanban_columns')
+    .delete()
+    .eq('id', columnId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+export async function updateColumnWipLimit(columnId: string, limit: number | null) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_columns')
+    .update({ wip_limit: limit })
+    .eq('id', columnId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+export async function reorderColumns(columns: { id: string, position: number }[]) {
+  const supabase = await createClient()
+
+  const updates = columns.map(col =>
+    supabase
+      .from('kanban_columns')
+      .update({ position: col.position })
+      .eq('id', col.id)
+  )
+
+  await Promise.all(updates)
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }

@@ -16,6 +16,7 @@ import {
   SortableContext,
   arrayMove,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
   useSortable
 } from '@dnd-kit/sortable'
 import { createPortal } from 'react-dom'
@@ -25,7 +26,7 @@ import KanbanCardModal from './KanbanCardModal'
 import KanbanAddList from './KanbanAddList'
 import KanbanAddCard from './KanbanAddCard'
 import KanbanCard from './KanbanCard'
-import { moveCard } from '@/actions/kanban'
+import { moveCard, reorderCardsInColumn, reorderColumns } from '@/actions/kanban'
 import { getUserActiveTimer } from '@/actions/time-tracking'
 import { TimeEntry } from '@/types/kanban'
 import { toast } from 'sonner'
@@ -67,13 +68,7 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
   const isMaster = organizationId === 'master'
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...attributes}
-      {...listeners}
-      className={cn("touch-none", isDragging && "z-50")} // touch-none for pointer events
-    >
+    <div ref={setNodeRef} style={style} className="touch-none">
       <KanbanCard
         card={card}
         onClick={onClick}
@@ -85,7 +80,8 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
   )
 }
 
-function ColumnContainer({
+// SortableColumn: Makes a column draggable
+function SortableColumn({
   column,
   cards,
   organizationId,
@@ -100,33 +96,47 @@ function ColumnContainer({
   activeTimer: TimeEntry | null,
   onTimerUpdate: (t: TimeEntry | null) => void
 }) {
-  const isMaster = organizationId === 'master'
-  const columnCards = useMemo(() => cards.filter(c => c.column_id === column.id), [cards, column.id])
-  const cardIds = useMemo(() => columnCards.map(c => c.id), [columnCards])
-
-  const { setNodeRef } = useSortable({
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({
     id: column.id,
     data: {
       type: 'Column',
-      column
+      column,
     }
   })
 
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const isMaster = organizationId === 'master'
+  const columnCards = cards.filter(c => c.column_id === column.id)
+  const cardIds = columnCards.map(c => c.id)
+
   return (
-    <div
-      ref={setNodeRef}
-      className="min-w-[300px] w-[300px] flex flex-col h-full rounded-lg bg-muted/50 border border-border/50"
-    >
-      {/* Header */}
-      <div className="p-3 font-semibold flex items-center justify-between border-b border-border/50 bg-muted/50 rounded-t-lg">
-        <span>{column.name}</span>
-        <span className="text-xs text-muted-foreground bg-background px-2 py-0.5 rounded-full border">
-          {columnCards.length}
-        </span>
+    <div ref={setNodeRef} style={style} className="flex flex-col w-[320px] min-w-[320px] shrink-0 h-full">
+      {/* Column Header - Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex items-center justify-between p-3 bg-muted/50 rounded-t-lg border-b cursor-grab active:cursor-grabbing"
+      >
+        <h3 className="font-semibold text-sm flex items-center gap-2">
+          {column.name}
+          <span className="text-xs text-muted-foreground font-normal">{columnCards.length}</span>
+        </h3>
       </div>
 
-      {/* Cards Area */}
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+      {/* Cards List */}
+      <div className="flex-1 overflow-y-auto p-2 bg-muted/20 rounded-b-lg space-y-2 min-h-[100px]">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           {columnCards.map(card => (
             <SortableCard
@@ -139,7 +149,6 @@ function ColumnContainer({
             />
           ))}
         </SortableContext>
-        {/* Placeholder for empty lists to be droppable is handled by Column ref above if logic allows dropping on column */}
       </div>
 
       {/* Footer / Add Card */}
@@ -163,7 +172,7 @@ export default function KanbanBoard({
   initialCards: any[],
   organizationId: string
 }) {
-  const [columns] = useState(initialColumns)
+  const [columns, setColumns] = useState(initialColumns)
   const [cards, setCards] = useState(initialCards)
   const [mounted, setMounted] = useState(false)
   const [activeDragCard, setActiveDragCard] = useState<any>(null)
@@ -190,6 +199,7 @@ export default function KanbanBoard({
     if (event.active.data.current?.type === 'Card') {
       setActiveDragCard(event.active.data.current.card)
     }
+    // Se for coluna, poderia setar activeColumn para overlay, mas não é essencial
   }
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -202,8 +212,19 @@ export default function KanbanBoard({
     if (activeId === overId) return
 
     const isActiveTask = active.data.current?.type === 'Card'
+    const isActiveColumn = active.data.current?.type === 'Column'
     const isOverTask = over.data.current?.type === 'Card'
     const isOverColumn = over.data.current?.type === 'Column'
+
+    // Handle Column drag (horizontal reorder)
+    if (isActiveColumn && isOverColumn) {
+      setColumns(cols => {
+        const oldIndex = cols.findIndex(c => c.id === activeId)
+        const newIndex = cols.findIndex(c => c.id === overId)
+        return arrayMove(cols, oldIndex, newIndex)
+      })
+      return
+    }
 
     if (!isActiveTask) return
 
@@ -250,48 +271,84 @@ export default function KanbanBoard({
     if (!over) return
 
     const activeId = active.id as string
-    const activeCard = cards.find(c => c.id === activeId)
+    const overId = over.id as string
 
-    if (!activeCard) return
+    if (activeId === overId) return
 
-    // Identify where it ended up
-    // We already optimistically updated 'cards' in DragOver, so 'activeCard.column_id' 
-    // in our state *should* be the new column.
-    // However, closure 'cards' here might be stale if we relied on state inside the handler? 
-    // No, handler is recreated? No, DndContext needs stable handlers or access to fresh state?
-    // DndContext handlers have closure freshness issues sometimes.
-    // Let's rely on the `active.data.current` or just re-find in the LATEST cards state?
-    // Actually, `cards` in this scope is from the render cycle.
-
-    // We'll perform the Server Action based on the logic of where it is dropped.
-    // Simpler: Just look at the `over` target.
-
-    let targetColumnId = activeCard.column_id // Default to where it was
-    const isOverTask = over.data.current?.type === 'Card'
+    const isActiveColumn = active.data.current?.type === 'Column'
     const isOverColumn = over.data.current?.type === 'Column'
 
-    if (isOverTask) {
-      const overCard = cards.find(c => c.id === over.id)
-      if (overCard) targetColumnId = overCard.column_id
-    } else if (isOverColumn) {
-      targetColumnId = String(over.id)
+    // Handle Column drag-end (persist reorder)
+    if (isActiveColumn && isOverColumn) {
+      const oldIndex = columns.findIndex(c => c.id === activeId)
+      const newIndex = columns.findIndex(c => c.id === overId)
+
+      if (oldIndex !== newIndex) {
+        const reorderedColumns = arrayMove(columns, oldIndex, newIndex)
+        const updatedPositions = reorderedColumns.map((col, index) => ({
+          id: col.id,
+          position: index
+        }))
+
+        try {
+          await reorderColumns(updatedPositions)
+          toast.success("Coluna reordenada")
+        } catch (error) {
+          console.error("Failed to reorder columns", error)
+          toast.error("Erro ao reordenar coluna")
+          setColumns(initialColumns) // Revert
+        }
+      }
+      return
     }
 
-    // Call Backend
+    // Handle Card drag
+    const activeCard = cards.find(c => c.id === activeId)
+    if (!activeCard) return
+
+    const isOverTask = over.data.current?.type === 'Card'
+
+    let targetColumnId = activeCard.column_id
+
+    if (isOverTask) {
+      const overCard = cards.find(c => c.id === overId)
+      if (overCard) targetColumnId = overCard.column_id
+    } else if (isOverColumn) {
+      targetColumnId = String(overId)
+    }
+
+    const originalColumnId = initialCards.find(c => c.id === activeId)?.column_id
+
+    // Determine if moving to different column or same column reorder
     try {
-      if (targetColumnId !== initialCards.find(c => c.id === activeId)?.column_id) {
-        // Changed Column
+      if (targetColumnId !== originalColumnId) {
+        // Changed Column - move to end
         await moveCard(activeId, targetColumnId, 9999)
-        toast.success("Cartão movido")
+        toast.success("Cartão movido para outra coluna")
       } else {
-        // Same column, maybe reorder?
-        // Implementing precise reorder backend persistence is Todo.
-        // For now, MVP assumes moving between columns is key.
+        // Same column reorder - calculate precise positions
+        const columnCards = cards.filter(c => c.column_id === targetColumnId)
+        const oldIndex = columnCards.findIndex(c => c.id === activeId)
+        const newIndex = isOverTask
+          ? columnCards.findIndex(c => c.id === overId)
+          : columnCards.length - 1
+
+        if (oldIndex !== newIndex) {
+          // Recalculate positions for all cards in column
+          const reorderedCards = arrayMove(columnCards, oldIndex, newIndex)
+          const updatedPositions = reorderedCards.map((card, index) => ({
+            id: card.id,
+            position: index
+          }))
+
+          await reorderCardsInColumn(updatedPositions)
+          toast.success("Cartão reordenado")
+        }
       }
     } catch (error) {
-      console.error("Failed to move card", error)
+      console.error("Failed to move/reorder card", error)
       toast.error("Erro ao mover cartão")
-      // Optional: Revert state
+      // Revert state
       setCards(initialCards)
     }
   }
@@ -310,17 +367,19 @@ export default function KanbanBoard({
       onDragEnd={handleDragEnd}
     >
       <div className="flex h-full gap-4 overflow-x-auto pb-4 items-start">
-        {columns.map(col => (
-          <ColumnContainer
-            key={col.id}
-            column={col}
-            cards={cards}
-            organizationId={organizationId}
-            onAddCard={handleAddCard}
-            activeTimer={activeTimer}
-            onTimerUpdate={setActiveTimer}
-          />
-        ))}
+        <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
+          {columns.map(col => (
+            <SortableColumn
+              key={col.id}
+              column={col}
+              cards={cards}
+              organizationId={organizationId}
+              onAddCard={handleAddCard}
+              activeTimer={activeTimer}
+              onTimerUpdate={setActiveTimer}
+            />
+          ))}
+        </SortableContext>
 
         {/* Add List Component */}
         <div className="pt-0">

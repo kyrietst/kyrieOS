@@ -11,7 +11,7 @@
 
 ---
 
-> **🚀 Status da Implementação (01/02/2026):**
+> **🚀 Status da Implementação (07/02/2026):**
 > 
 > **✅ CONCLUÍDO:**
 > - **Nova Sidebar:** Hierarquia Workspace/Clientes/Operacional implementada com Avatares.
@@ -20,17 +20,25 @@
 >     - Banco de dados (Tables + Policies).
 >     - UI de Board com colunas e cards renderizando.
 >     - Seed de dados iniciais para "Adega Anita's".
+>     - ⭐ **Drag-and-drop persistente** implementado (@ dnd-kit).
+>     - ⭐ **Card Details Modal** Trello-inspired (High-fidelity UX).
+>     - ⭐ **Time Tracking Nativo ("Clockify Killer")**:
+>         - Quick Start: Botão Play no card.
+>         - Auto-stop: Apenas 1 timer ativo por vez.
+>         - Logs integrados no card details.
+>         - Persistência cross-page (recarregar mantém timer).
+>         - Badge pulsante em tempo real.
 > - **Inbox Unificado:** Badge de contagem real implementado.
 > - **Kyrie AI:** Interface de Chat funcional (Smoke Test aprovado).
 > - **Wiki por Cliente:** Estrutura de páginas e listagem básica.
 > 
 > **🚧 EM PROGRESSO:**
-> - **Kanban DnD:** Implementar persistência de movimento de cards (Drag-and-drop).
 > - **Kyrie AI RAG:** Integração real com embeddings e busca vetorial.
 > - **Wiki Editor:** Editor de conteúdo Markdown completo.
 > 
 > **⏳ PENDENTE:**
 > - **Migração Trello:** Scripts de importação via API.
+> - **Time Reports:** Dashboard de relatórios de tempo.
 > - **Refinamentos UI:** Polimento visual e transições.
 
 ---
