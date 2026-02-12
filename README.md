@@ -79,6 +79,17 @@ _Acesse em: `http://localhost:3000`_
 - **Documentação da API:**
   [http://localhost:8002/docs](http://localhost:8002/docs)
 
+## 📚 Documentação (Kyrie Docs)
+
+A documentação técnica do sistema está centralizada na pasta `docs/`:
+
+- **[Arquitetura e Segurança](./docs/architecture/)**: Specs de API, Diagramas, RLS e Migrations.
+- **[Funcionalidades (PRDs)](./docs/features/)**: Requisitos e especificações de cada módulo.
+- **[Planos de Implementação](./docs/plans/)**: Roadmaps e planos de execução aprovados.
+- **[Guias e Walkthroughs](./docs/guides/)**: Histórico de mudanças e guias de onboarding.
+
+---
+
 ## 🛠️ Tecnologias
 
 - **Frontend:** Next.js 14, Tailwind CSS, Shadcn UI
