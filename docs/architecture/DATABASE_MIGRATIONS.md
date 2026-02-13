@@ -102,8 +102,8 @@ using (
 Refatoração completa do sistema Kanban para suportar **Colunas Globais** e **Master View** de alta performance.
 
 ### Arquivos
-- `20260212_master_kanban_refactor.sql`: Implementação de RLS, Views e RPCs.
-- `20260212_global_columns.sql`: Criação de colunas globais e migração de dados.
+- **20260213_setup_ultimate_kanban.sql**: Sets up the 12 standard columns, backfills organizations, and creates the replication trigger `sync_kanban_columns_to_all_orgs`.
+- **20260212_master_kanban_refactor.sql**: Implements RLS policies for `kanban_cards` and `kanban_columns`, and creates the `master_kanban_view`.
 
 ### Principais Mudanças
 

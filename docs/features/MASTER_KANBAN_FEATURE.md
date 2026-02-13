@@ -16,15 +16,17 @@ O **Master Kanban** é uma funcionalidade centralizada no Kyrie OS que permite a
 
 ---
 
-## 2. Master Kanban (Visão Agregada)
+### 2.1 Infraestrutura Ultimate (Colunas Padronizadas)
+O Master Kanban agora utiliza a infraestrutura **Ultimate**, que padroniza o fluxo de trabalho em todas as organizações:
+- **12 Status Globais**: Colunas pré-definidas (ex: INFO CLIENTES, IDEIAS, AGENDADO, EM ANDAMENTO, CONCLUÍDO) que garantem consistência.
+- **Sincronização Automática**: Qualquer ajuste nas colunas globais é replicado instantaneamente para todos os clientes via triggers de banco de dados (`sync_kanban_columns_to_all_orgs`).
+- **Segurança RLS**: Somente `KYRIE_ADMIN` pode modificar a estrutura global, enquanto clientes têm visão otimizada de seus próprios cartões dentro desses status.
 
-### 2.1 Colunas Globais e Virtuais
-- **Visualização Unificada:** Agrega cartões de todos os clientes em colunas comuns ("A Fazer", "Em Progresso", "Concluído").
-- **Gerenciamento Global:** Criar uma coluna no Master Kanban propaga essa coluna para **todos** os quadros dos clientes automaticamente.
-
-### 2.2 Identificação (Badges)
-- Cada cartão possui um **Badge** com a sigla e cor do cliente (ex: `[ADE]` Vermelho).
-- Permite rápida identificação visual da origem da tarefa.
+### 2.2 Movimentação Híbrida (Drag-and-Drop)
+Implementamos uma lógica de movimentação que resolve a discrepância entre Colunas Globais e Locais:
+- **Tradução de Status**: Ao mover um card entre colunas globais no Master View, o sistema identifica automaticamente a coluna local correspondente na organização do cliente.
+- **Persistência Local**: O card é movido para a coluna local correta, mantendo o fluxo do cliente íntegro.
+- **Identificação (Badges)**: Cada cartão possui um **Badge** com a sigla e cor do cliente (ex: `[ADE]` Vermelho).
 
 ---
 

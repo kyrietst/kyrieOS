@@ -42,6 +42,11 @@ export interface KanbanCard {
     assigned_to?: string | null;
     created_at?: string;
     updated_at?: string;
+    // Cover fields
+    cover_type?: 'color' | 'image' | null;
+    cover_value?: string | null;
+    cover_mode?: 'header' | 'full';
+    cover_text_theme?: 'light' | 'dark';
     // Extended for Master View
     organization_name?: string;
     organization_slug?: string;
@@ -95,6 +100,11 @@ export interface MasterKanbanCard {
     is_done_column: boolean;
     // Computed Status
     master_status: 'todo' | 'doing' | 'done' | 'backlog';
+    // Cover fields
+    cover_type?: 'color' | 'image' | null;
+    cover_value?: string | null;
+    cover_mode?: 'header' | 'full';
+    cover_text_theme?: 'light' | 'dark';
     // Labels (JSONB)
     labels: Array<{
         name: string;

@@ -4,7 +4,18 @@ All notable changes to the Kyrie OS project will be documented in this file.
 
 ## [Unreleased]
 
-## [v1.3.0-beta] - 2026-02-12
+### [1.6.0] - 2026-02-14
+### Fixed
+- **Master Kanban Drag-and-Drop:** Resolved card snap-back by synchronizing `master_status` with `column_id` during movements.
+- **Frontend ID Mismatch:** Corrected `SortableCard` ID resolution to support both `id` and `card_id`.
+
+## [1.5.0] - 2026-02-13
+### Added
+- **Ultimate Kanban Schema:** Standardized 12 global columns across all organizations.
+- **Replication Trigger:** Automatic syncing of global columns to existing and new tenants.
+- **Hybrid Movement Logic:** New server actions to bridge Global Statuses and Local Columns.
+
+## [1.4.0] - 2026-02-12
 ### Added
 - **Card-based Time Tracking:** New dedicated time tracking system tied to Kanban cards.
 - **Global Control Dock:** Floating dock to manage active timers from any screen.

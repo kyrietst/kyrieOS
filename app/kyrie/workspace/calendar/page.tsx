@@ -12,6 +12,7 @@ import {
     Clock,
     Briefcase
 } from 'lucide-react'
+import { usePageTitle } from '@/hooks/usePageTitle'
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -23,6 +24,7 @@ import { getCapacityCalendarData } from '@/actions/master-calendar'
 import KanbanCardModal from '@/components/kanban/KanbanCardModal'
 
 export default function StrategicCalendarPage() {
+    usePageTitle('Master Strategic Calendar')
     const [currentDate, setCurrentDate] = useState(new Date())
     const [data, setData] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)

@@ -40,18 +40,17 @@ A SQL View abstracts the complexity of joining cards, columns, and organizations
 - **Usage:** Used by the Admin Dashboard to render the unified board.
 
 ### 3.3 RPC: `get_master_kanban`
-A Postgres function for high-performance data retrieval.
-- **Features:** Server-side pagination, Filtering (Status, Search), Ordering.
-- **Security:** Inherits RLS policies context.
+A Postgres function for high-performance data retrieval from the `master_kanban_view`.
 
 ## 4. Application Layer
 
 ### 4.1 Server Actions (`actions/kanban.ts`)
-- `getKanbanColumns(orgId)`: Fetches global columns AND org-specific columns using `.or()` query.
+- `getKanbanColumns(orgId)`: Logic-based branch (Client = Local columns, Master = Global columns).
 - `getMasterKanban(...)`: Calls the RPC function for the admin view.
+- `moveCardToMasterStatus(cardId, targetGlobalColumnId)`: Translates global moves to local persistence.
 
 ### 4.2 Frontend Components
-- **`KanbanBoard.tsx`**:
+- **`KanbanBoard.tsx`**: Manages complex `dnd-kit` state with optimistic updates for both `column_id` and `master_status`.
   - Distinguishes Global Columns via `organization_id === null`.
   - Renders visual indicators (Badges) for Global Columns.
   - Disables editing/deleting of Global Columns for non-admins.
@@ -62,3 +61,8 @@ A Postgres function for high-performance data retrieval.
 - **2026-02-12:** Refactor to RLS and Global Columns.
   - `20260212_master_kanban_refactor.sql`: RLS Policies, Master View, RPC.
   - `20260212_global_columns.sql`: Global Column Seed, Data Migration, Column Cleanup.
+- **2026-02-13:** **Ultimate Kanban Setup** (`20260213_setup_ultimate_kanban.sql`).
+  - Implemented 12 standard columns.
+  - Added replication triggers for multi-tenant sync.
+- **2026-02-14:** **Hybrid Drag-and-Drop Fix**.
+  - Internal RPC and state synchronization for seamless movement.

@@ -4,16 +4,26 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 // Columns
-export async function getKanbanColumns(organizationId: string) {
+export async function getKanbanColumns(organizationId?: string) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+
+  let query = supabase
     .from('kanban_columns')
     .select('*')
-    .or(`organization_id.eq.${organizationId},organization_id.is.null`)
     .order('position')
 
+  if (organizationId && organizationId !== 'master' && organizationId !== 'global') {
+    // Visão Cliente: Apenas colunas do cliente
+    query = query.eq('organization_id', organizationId)
+  } else {
+    // Visão Master: Apenas colunas globais (IS NULL)
+    query = query.is('organization_id', null)
+  }
+
+  const { data, error } = await query
+
   if (error) throw error
-  return data
+  return data || []
 }
 
 export async function createKanbanColumn(organizationId: string, name: string) {
@@ -192,6 +202,57 @@ export async function createCardFromMaster(
     title,
     position: 99999 // Append to end
   })
+}
+
+/**
+ * Handles moving a card in the Master View.
+ * Translates a Global Column ID to the corresponding Local Column ID for the card's organization.
+ */
+export async function moveCardToMasterStatus(cardId: string, targetGlobalColumnId: string) {
+  const supabase = await createClient()
+
+  // 1. Get card details to find its organization
+  const { data: card, error: cardError } = await supabase
+    .from('kanban_cards')
+    .select('organization_id')
+    .eq('id', cardId)
+    .single()
+
+  if (cardError || !card) throw new Error('Card not found or access denied')
+
+  // 2. Get global column details to find its name
+  const { data: globalCol, error: globalError } = await supabase
+    .from('kanban_columns')
+    .select('name')
+    .eq('id', targetGlobalColumnId)
+    .is('organization_id', null)
+    .single()
+
+  if (globalError || !globalCol) throw new Error('Target master column not found')
+
+  // 3. Find matching local column for that organization
+  const { data: localCol, error: localError } = await supabase
+    .from('kanban_columns')
+    .select('id')
+    .eq('organization_id', card.organization_id)
+    .eq('name', globalCol.name)
+    .single()
+
+  if (localError || !localCol) {
+    console.error(`Could not find matching local column for ${globalCol.name} in org ${card.organization_id}`)
+    throw new Error('Coluna correspondente não encontrada no cliente')
+  }
+
+  // 4. Update the card
+  const { error: updateError } = await supabase
+    .from('kanban_cards')
+    .update({ column_id: localCol.id, position: 9999 })
+    .eq('id', cardId)
+
+  if (updateError) throw updateError
+
+  revalidatePath('/kyrie/workspace/kanban')
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
 }
 
 // Quick Actions
@@ -387,4 +448,33 @@ export async function reorderColumns(columns: { id: string, position: number }[]
 
   await Promise.all(updates)
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+export async function updateCardCover(
+  cardId: string,
+  coverType: 'color' | 'image' | null,
+  coverValue: string | null,
+  coverMode: 'header' | 'full' = 'header',
+  coverTextTheme: 'light' | 'dark' = 'dark'
+) {
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update({
+      cover_type: coverType,
+      cover_value: coverValue,
+      cover_mode: coverMode,
+      cover_text_theme: coverTextTheme,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', cardId)
+
+  if (error) {
+    console.error('Error updating card cover:', error)
+    throw error
+  }
+
+  revalidatePath('/kanban')
+  return { success: true }
 }

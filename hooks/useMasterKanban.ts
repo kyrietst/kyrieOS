@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { MasterKanbanCard, KanbanColumn } from '../types/kanban';
 import { toast } from 'sonner';
 import { fetchMasterKanban, getGlobalColumns } from '@/actions/master-kanban';
@@ -52,21 +52,21 @@ export function useMasterKanban() {
         }
     }
 
-    const refresh = () => {
+    const refresh = useCallback(() => {
         setPage(1);
         loadData();
-    };
+    }, []);
 
-    const loadMore = () => {
+    const loadMore = useCallback(() => {
         if (!isLoading && hasMore) {
             setPage(prev => prev + 1);
         }
-    };
+    }, [isLoading, hasMore]);
 
-    const updateFilters = (newFilters: Partial<typeof filters>) => {
+    const updateFilters = useCallback((newFilters: Partial<typeof filters>) => {
         setFilters(prev => ({ ...prev, ...newFilters }));
         setPage(1); // Reset to first page on filter change
-    };
+    }, []);
 
     return {
         columns,

@@ -33,10 +33,8 @@ graph TD
 - **Framework:** Next.js 16 (App Router)
 - **Linguagem:** TypeScript
 - **Estilização:** Tailwind CSS v4 + Shadcn/ui
-- **Kanban Board:** Logic for drag-and-drop, column management, and card detailed views.
-- **Time Tracking:** Card-based timer system (`kanban_time_entries`) with a singleton enforcement strategy per user. Features a Global Dock for visibility.
-- **Organization Management:** Hierarchical data access (Master vs Client views).
-- **Hospedagem (Futuro):** Vercel
+- **Ultimate Kanban:** A standardized infrastructure with 12 global columns, automatically synced to all client organizations via database triggers.
+- **Organization Management:** Hierarchical data access with specific views for Master (Global) and Client (Local) contexts.
 
 ### 2. Backend (The Brain)
 

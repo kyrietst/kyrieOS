@@ -55,6 +55,7 @@ import { cn } from '@/lib/utils'
 
 import { startTimer, stopTimer, getCardTimeLogs } from '@/actions/time-tracking'
 import { TimeEntry } from '@/types/kanban'
+import CardCoverSelector from './CardCoverSelector'
 import { TimerBadge } from './TimerBadge'
 import { LabelPicker } from './LabelPicker'
 import { AvatarStack } from '@/components/ui/avatar-stack'
@@ -71,9 +72,12 @@ interface KanbanCardDetailsProps {
     card: any
     activeTimer?: TimeEntry | null
     onTimerUpdate?: (t: TimeEntry | null) => void
+    // Assuming these will be passed or fetched
+    attachments?: any[]
+    fetchCard?: () => void
 }
 
-export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerUpdate }: KanbanCardDetailsProps) {
+export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerUpdate, attachments = [], fetchCard }: KanbanCardDetailsProps) {
     const [title, setTitle] = useState(card.title)
     const [description, setDescription] = useState(card.description || '')
     const [isSaving, setIsSaving] = useState(false)
@@ -95,12 +99,22 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     const [confidence, setConfidence] = useState(card.confidence || 5)
     const [effort, setEffort] = useState(card.effort || 5)
 
-    // Fetch Logs on Open
+    const coverData = {
+        type: card.cover_type as 'color' | 'image' | null,
+        value: card.cover_value || null,
+        mode: (card.cover_mode as 'header' | 'full') || 'header',
+        textTheme: (card.cover_text_theme as 'light' | 'dark') || 'dark'
+    }
+
+    // Fetch Logs & Data on Open
     useEffect(() => {
         if (isOpen) {
+            if (typeof fetchCard === 'function') {
+                fetchCard()
+            }
             getCardTimeLogs(card.id).then(setTimeLogs).catch(console.error)
         }
-    }, [isOpen, card.id])
+    }, [isOpen, card.id, fetchCard])
 
     const handleStartTimer = async () => {
         try {
@@ -176,16 +190,28 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-5xl h-[95vh] md:h-auto md:max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#F4F5F7] dark:bg-zinc-900 border-none shadow-2xl">
+                {/* Card Cover Preview in Details */}
+                {coverData.type && (
+                    <div
+                        className={cn(
+                            "w-full h-32 shrink-0 relative flex items-end p-4",
+                            coverData.type === 'color' ? "" : "bg-muted"
+                        )}
+                        style={{
+                            backgroundColor: coverData.type === 'color' ? coverData.value! : undefined,
+                            backgroundImage: coverData.type === 'image' ? `url(${coverData.value})` : undefined,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center'
+                        }}
+                    >
+                        {/* Scrim for visibility if full or just as a finish */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    </div>
+                )}
+
                 <DialogHeader className="sr-only">
                     <DialogTitle>{card.title}</DialogTitle>
                 </DialogHeader>
-
-                {/* Cover Image or Color - Trello Style */}
-                {card.cover_color ? (
-                    <div className={cn("w-full h-32 flex-shrink-0 transition-colors", card.cover_color)} />
-                ) : (
-                    null // No spacer if no cover, header will be top
-                )}
 
                 {/* HEADER BAR (Navigation & Window Controls) */}
                 <div className="flex justify-between items-center px-4 py-3 md:px-6 md:py-4 bg-transparent shrink-0">
@@ -249,22 +275,15 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                             )}
                         </div>
 
-                        {/* Cover Picker (Mock) */}
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                    <ImageIcon className="w-4 h-4" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-3" align="end">
-                                <div className="text-xs font-medium mb-3">Capa</div>
-                                <div className="grid grid-cols-5 gap-2">
-                                    {['bg-red-500', 'bg-green-500', 'bg-blue-500', 'bg-yellow-500', 'bg-purple-500'].map(c => (
-                                        <div key={c} className={cn("w-8 h-6 rounded cursor-pointer hover:ring-2 ring-offset-1 ring-primary", c)} />
-                                    ))}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+
+                        {/* Card Cover Picker (Relocated to Header) */}
+                        <CardCoverSelector
+                            cardId={card.id}
+                            currentCover={coverData}
+                            attachments={attachments}
+                            onUpdate={fetchCard}
+                            variant="icon"
+                        />
 
                         {/* More Actions Dropdown (Moved from Action Bar) */}
                         <DropdownMenu>
@@ -316,7 +335,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                 </div>
                             </div>
 
-                            {/* Horizontal Action Bar */}
                             <div className="pl-10 flex flex-wrap gap-2">
                                 <ActionButton icon={User} label="Membros" />
                                 <LabelPicker
@@ -328,7 +346,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                 <ActionButton icon={CheckSquare} label="Checklist" />
                                 <ActionButton icon={Calendar} label="Datas" />
                                 <ActionButton icon={Paperclip} label="Anexo" />
-                                {/* Removed MoreHorizontal from here */}
                             </div>
 
                             {/* Metadata (Members/Labels) if visible */}

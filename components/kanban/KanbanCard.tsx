@@ -167,7 +167,16 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
         onEscape: () => setIsEditingTitle(false)
     }, !isEditingTitle)
 
-    const isCompletedColumn = card.kanban_columns?.is_done_column // This checks if the underlying column is done type
+    const isCompletedColumn = card.kanban_columns?.is_done_column || card.is_done_column
+
+    // Cover Data
+    const coverType = card.cover_type as 'color' | 'image' | null
+    const coverValue = card.cover_value || null
+    const coverMode = (card.cover_mode as 'header' | 'full') || 'header'
+    const textTheme = (card.cover_text_theme as 'light' | 'dark') || 'dark'
+
+    const isFullCover = coverType && coverMode === 'full'
+    const isHeaderCover = coverType && coverMode === 'header'
 
     return (
         <>
@@ -178,11 +187,17 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                 >
                     <Card
                         className={cn(
-                            "group cursor-pointer relative transition-all duration-300 border-border/60 hover:border-primary/40 hover:shadow-xl dark:hover:shadow-primary/5 bg-card/80 backdrop-blur-sm",
+                            "group cursor-pointer relative transition-all duration-300 border-border/60 hover:border-primary/40 hover:shadow-xl bg-card shadow-sm overflow-hidden",
                             isToggling && "opacity-50 pointer-events-none",
                             isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20",
                             card.justDropped && "animate-success-flash"
                         )}
+                        style={isFullCover ? {
+                            backgroundColor: coverType === 'color' ? coverValue! : undefined,
+                            backgroundImage: coverType === 'image' ? `url(${coverValue})` : undefined,
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                        } : {}}
                         onClick={(e) => {
                             if (isEditingTitle) return;
                             setShowDetails(true);
@@ -190,6 +205,11 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                         onMouseEnter={() => setIsHovered(true)}
                         onMouseLeave={() => setIsHovered(false)}
                     >
+                        {/* Scrim for Full Cover */}
+                        {isFullCover && (
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+                        )}
+
                         {/* Pencil icon for Quick Edit */}
                         {!hideActions && !isEditingTitle && (
                             <button
@@ -197,17 +217,39 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                     e.stopPropagation();
                                     setIsEditingTitle(true);
                                 }}
-                                className="absolute top-2 right-2 p-1.5 rounded-md bg-background/90 opacity-0 group-hover:opacity-100 transition-all hover:bg-accent z-40 shadow-sm border"
+                                className={cn(
+                                    "absolute top-2 right-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all z-40 shadow-sm border",
+                                    isFullCover ? "bg-black/20 text-white border-white/20 hover:bg-black/40" : "bg-background/90 text-muted-foreground hover:bg-accent border-border/60"
+                                )}
                                 title="Edição rápida"
                             >
-                                <Pencil className="h-3 w-3 text-muted-foreground" />
+                                <Pencil className="h-3 w-3" />
                             </button>
                         )}
 
-                        {/* Color Cover */}
-                        <div className={cn("w-full transition-all", card.cover_color ? "h-2.5" : "h-0", card.cover_color)} />
+                        {/* Top Cover (Header Mode) */}
+                        {isHeaderCover && (
+                            <div
+                                className="w-full h-24 shrink-0 transition-all bg-muted"
+                                style={{
+                                    backgroundColor: coverType === 'color' ? coverValue! : undefined,
+                                    backgroundImage: coverType === 'image' ? `url(${coverValue})` : undefined,
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center'
+                                }}
+                            />
+                        )}
 
-                        <CardContent className={cn("p-3 space-y-3", card.cover_color ? "pt-2" : "pt-3")}>
+                        {/* Deprecated legacy cover color strip (if no new cover is active) */}
+                        {!coverType && card.cover_color && (
+                            <div className={cn("w-full transition-all h-2.5", card.cover_color)} />
+                        )}
+
+                        <CardContent className={cn(
+                            "p-3 space-y-3 relative z-10",
+                            isHeaderCover ? "pt-2" : "pt-3",
+                            isFullCover && "min-h-[100px] flex flex-col justify-end"
+                        )}>
                             {/* Header: Title */}
                             <div className="flex items-start justify-between gap-2">
                                 {isEditingTitle ? (
@@ -232,7 +274,10 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                         />
                                     </div>
                                 ) : (
-                                    <div className="font-semibold text-[13px] leading-snug break-words flex-1 pr-6 text-foreground/90">
+                                    <div className={cn(
+                                        "font-bold text-[13px] leading-snug break-words flex-1 pr-6",
+                                        isFullCover && textTheme === 'light' ? "text-white" : isFullCover && textTheme === 'dark' ? "text-zinc-900" : "text-foreground"
+                                    )}>
                                         {card.title}
                                     </div>
                                 )}
@@ -267,14 +312,13 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
 
                                     {/* Unified Label Rendering for Master (JSONB) and Client (Joined) */}
                                     {(() => {
-                                        // Same logic as before but with slightly better padding/font
                                         if (Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object') {
                                             return card.labels.map((l: any, i: number) => (
                                                 <span
                                                     key={i}
                                                     className={cn(
                                                         "text-[9px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm mb-0.5",
-                                                        l.color || 'bg-gray-500'
+                                                        isFullCover ? "bg-white/20 backdrop-blur-sm" : (l.color || 'bg-gray-500')
                                                     )}
                                                 >
                                                     {l.name}
@@ -288,7 +332,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                                     key={cl.kanban_labels.id}
                                                     className={cn(
                                                         "text-[9px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm mb-0.5",
-                                                        cl.kanban_labels.color
+                                                        isFullCover ? "bg-white/20 backdrop-blur-sm" : cl.kanban_labels.color
                                                     )}
                                                 >
                                                     {cl.kanban_labels.name}
@@ -327,8 +371,9 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                             onClick={handleQuickStart}
                                             disabled={isLoadingTimer}
                                             className={cn(
-                                                "text-primary/60 hover:text-red-500 transition-all p-1 rounded-full hover:bg-red-50 dark:hover:bg-red-900/30 z-30 pointer-events-auto",
-                                                isTimerActive ? "opacity-100 text-red-500 bg-red-50 dark:bg-red-900/20" : "opacity-0 group-hover:opacity-100"
+                                                "transition-all p-1 rounded-full z-30 pointer-events-auto",
+                                                isFullCover ? "text-white/80 hover:text-white hover:bg-white/20" : "text-primary/60 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30",
+                                                isTimerActive ? (isFullCover ? "opacity-100 text-red-400 bg-white/10" : "opacity-100 text-red-500 bg-red-50 dark:bg-red-900/20") : "opacity-0 group-hover:opacity-100"
                                             )}
                                         >
                                             {isLoadingTimer ? (
@@ -349,14 +394,16 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                             onClick={handleToggleComplete}
                                             disabled={isToggling}
                                             className={cn(
-                                                "text-muted-foreground/40 hover:text-emerald-600 transition-all opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-emerald-50 z-30",
-                                                isToggling && "opacity-100 animate-pulse"
+                                                "transition-all opacity-0 group-hover:opacity-100 p-1 rounded-full z-30",
+                                                isFullCover ? "text-white/60 hover:text-white hover:bg-white/20" : "text-muted-foreground/40 hover:text-emerald-600 hover:bg-emerald-50",
+                                                isToggling && "opacity-100 animate-pulse",
+                                                isCompletedColumn && (isFullCover ? "opacity-100 text-emerald-400" : "opacity-100 text-emerald-600")
                                             )}
                                         >
                                             {isToggling ? (
                                                 <Loader2 className="h-4 w-4 animate-spin" />
                                             ) : isCompletedColumn ? (
-                                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                                <CheckCircle2 className="h-4 w-4" />
                                             ) : (
                                                 <Circle className="h-4 w-4" />
                                             )}

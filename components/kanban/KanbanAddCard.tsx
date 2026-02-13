@@ -158,14 +158,13 @@ export default function KanbanAddCard({ columnId, organizationId, isMaster, colu
     }
 
     return (
-        <div className="p-2">
-            <button
-                onClick={() => setIsEditing(true)}
-                className="w-full text-sm text-muted-foreground hover:text-primary hover:bg-muted/50 py-1.5 px-2 rounded-md text-left flex items-center gap-2 transition-colors"
-            >
-                <Plus className="h-4 w-4" />
-                Adicionar um cartão
-            </button>
-        </div>
+        <Button
+            variant="ghost"
+            className="w-full justify-start text-muted-foreground hover:bg-muted/50 hover:text-foreground h-auto py-2 px-3"
+            onClick={() => setIsEditing(true)}
+        >
+            <Plus className="h-4 w-4 mr-2" />
+            Adicionar um cartão
+        </Button>
     )
 }

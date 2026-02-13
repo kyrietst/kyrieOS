@@ -69,7 +69,7 @@ export default function KanbanAddList({ organizationId }: KanbanAddListProps) {
         return (
             <div
                 ref={formRef}
-                className="min-w-[300px] w-[300px] rounded-lg bg-gray-100/50 p-2 flex flex-col gap-2 h-fit border border-border/50 shadow-sm"
+                className="min-w-[300px] w-[300px] rounded-xl bg-secondary/50 p-3 flex flex-col gap-2 h-fit border border-border/40 shadow-sm backdrop-blur-sm"
             >
                 <Input
                     ref={inputRef}
@@ -77,7 +77,7 @@ export default function KanbanAddList({ organizationId }: KanbanAddListProps) {
                     onChange={(e) => setTitle(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Digite o nome da lista..."
-                    className="h-9 bg-white border-primary/20 focus-visible:ring-primary/30"
+                    className="h-9 bg-background border-primary/10 focus-visible:ring-primary/20"
                     disabled={isLoading}
                 />
                 <div className="flex items-center gap-2">
@@ -106,7 +106,7 @@ export default function KanbanAddList({ organizationId }: KanbanAddListProps) {
         <Button
             variant="ghost"
             onClick={() => setIsEditing(true)}
-            className="min-w-[300px] w-[300px] justify-start gap-2 h-12 bg-gray-100/30 hover:bg-gray-100/80 text-muted-foreground hover:text-foreground rounded-lg border border-transparent hover:border-border/40 dashed"
+            className="min-w-[320px] w-[320px] justify-start gap-2 h-12 bg-secondary/30 hover:bg-secondary/60 text-muted-foreground hover:text-foreground rounded-xl border border-dashed border-border/40"
         >
             <Plus className="w-4 h-4" />
             Adicionar outra lista
