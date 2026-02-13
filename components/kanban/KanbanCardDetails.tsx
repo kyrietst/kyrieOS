@@ -189,7 +189,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl h-[95vh] md:h-auto md:max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#F4F5F7] dark:bg-zinc-900 border-none shadow-2xl">
+            <DialogContent className="max-w-5xl h-[95vh] md:h-auto md:max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#F4F5F7] dark:bg-zinc-900 border-none shadow-2xl [&>button]:hidden">
                 {/* Card Cover Preview in Details */}
                 {coverData.type && (
                     <div

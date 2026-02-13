@@ -9,12 +9,15 @@ The user reported duplicate "Close" (X) buttons in the `KanbanCardDetails.tsx` m
 
 ## Proposed Changes
 
-### [MODIFY] [KanbanCardDetails.tsx](file:///d:/1. LUCCAS/aplicativos ai/KyrieOS10/kyrieOS/components/kanban/KanbanCardDetails.tsx)
-- Add a CSS class `[&>button]:hidden` to the `DialogContent` component to hide the default Shadcn absolute-positioned close button.
-- Keep the custom close button in the header bar as it is correctly aligned with the other header icons (Megaphone, Cover, More).
+### [x] Phase 1: Planning
+- [x] Identify source of duplicate buttons.
+- [x] Define CSS override strategy.
 
-## Verification Checklist
-- [ ] Open a Kanban card.
-- [ ] Verify only one "X" button is visible in the top right.
-- [ ] Ensure the remaining "X" button is properly aligned with the "..." and "Capa" icons.
-- [ ] Confirm the button still closes the modal.
+### [x] Phase 2: Implementation
+- [x] **Added** `[&>button]:hidden` to `DialogContent` in `KanbanCardDetails.tsx` to hide the default absolute-positioned close button.
+- [x] **Maintained** custom header close button for perfect alignment.
+
+### [x] Phase 3: Verification
+- [x] Verified only one "X" button is visible.
+- [x] Ensured alignment with "Capa" and "..." icons.
+- [x] Confirmed the modal still closes correctly.
