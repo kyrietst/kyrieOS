@@ -455,7 +455,8 @@ export async function updateCardCover(
   coverType: 'color' | 'image' | null,
   coverValue: string | null,
   coverMode: 'header' | 'full' = 'header',
-  coverTextTheme: 'light' | 'dark' = 'dark'
+  coverTextTheme: 'light' | 'dark' = 'dark',
+  coverSize: 'small' | 'large' = 'small'
 ) {
   const supabase = await createClient()
 
@@ -465,6 +466,7 @@ export async function updateCardCover(
       cover_type: coverType,
       cover_value: coverValue,
       cover_mode: coverMode,
+      cover_size: coverSize,
       cover_text_theme: coverTextTheme,
       updated_at: new Date().toISOString()
     })
@@ -475,6 +477,7 @@ export async function updateCardCover(
     throw error
   }
 
-  revalidatePath('/kanban')
+  revalidatePath('/kyrie/workspace/kanban')
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   return { success: true }
 }

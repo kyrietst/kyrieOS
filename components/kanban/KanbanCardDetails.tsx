@@ -103,6 +103,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
         type: card.cover_type as 'color' | 'image' | null,
         value: card.cover_value || null,
         mode: (card.cover_mode as 'header' | 'full') || 'header',
+        size: (card.cover_size as 'small' | 'large') || 'small',
         textTheme: (card.cover_text_theme as 'light' | 'dark') || 'dark'
     }
 

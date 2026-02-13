@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/utils/supabase/client'
 import {
   DndContext,
   DragOverlay,
@@ -234,6 +236,7 @@ export default function KanbanBoard({
   organizationId: string,
   extraActions?: React.ReactNode
 }) {
+  const router = useRouter()
   const { currentPreset } = useKanbanBackground(organizationId === 'master' ? null : organizationId)
   const [columns, setColumns] = useState(initialColumns)
   const [cards, setCards] = useState(initialCards)
@@ -246,6 +249,39 @@ export default function KanbanBoard({
     setMounted(true)
     getUserActiveTimer().then(setActiveTimer)
   }, [])
+
+  // IMPORTANT: Keep state in sync with server revalidations
+  useEffect(() => {
+    setColumns(initialColumns)
+    setCards(initialCards)
+  }, [initialColumns, initialCards])
+
+  // Setup Realtime Listener
+  useEffect(() => {
+    if (!mounted || !organizationId) return
+
+    const supabase = createClient()
+    const channel = supabase
+      .channel('kanban-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'kanban_cards',
+          filter: organizationId !== 'master' ? `organization_id=eq.${organizationId}` : undefined
+        },
+        (payload: any) => {
+          // Trigger a reactive server revalidation
+          router.refresh()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [mounted, organizationId])
 
   // Inject actions into Header - Memoized to prevent infinite loop
   const headerActions = useMemo(() => (

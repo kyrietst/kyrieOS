@@ -175,8 +175,8 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
     const coverMode = (card.cover_mode as 'header' | 'full') || 'header'
     const textTheme = (card.cover_text_theme as 'light' | 'dark') || 'dark'
 
-    const isFullCover = coverType && coverMode === 'full'
-    const isHeaderCover = coverType && coverMode === 'header'
+    const isFullCover = coverType && (card.cover_size === 'large' || coverMode === 'full')
+    const isHeaderCover = coverType && (card.cover_size === 'small' || coverMode === 'header') && !isFullCover
 
     return (
         <>
@@ -246,9 +246,9 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                         )}
 
                         <CardContent className={cn(
-                            "p-3 space-y-3 relative z-10",
+                            "p-3 space-y-3 relative z-10 w-full",
                             isHeaderCover ? "pt-2" : "pt-3",
-                            isFullCover && "min-h-[100px] flex flex-col justify-end"
+                            isFullCover && "min-h-[140px] flex flex-col justify-end p-2 pb-2.5"
                         )}>
                             {/* Header: Title */}
                             <div className="flex items-start justify-between gap-2">
@@ -275,10 +275,33 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                     </div>
                                 ) : (
                                     <div className={cn(
-                                        "font-bold text-[13px] leading-snug break-words flex-1 pr-6",
-                                        isFullCover && textTheme === 'light' ? "text-white" : isFullCover && textTheme === 'dark' ? "text-zinc-900" : "text-foreground"
+                                        "font-bold text-[13px] leading-snug break-words flex-1 pr-6 flex items-center gap-1.5",
+                                        isFullCover
+                                            ? (textTheme === 'light' ? "text-white" : "text-zinc-900")
+                                            : "text-foreground"
                                     )}>
-                                        {card.title}
+                                        {/* Trello-Style Checkbox (Visible on hover or when completed) */}
+                                        {(isHovered || card.completed_at) && (
+                                            <motion.button
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                className={cn(
+                                                    "shrink-0 transition-all hover:scale-110 active:scale-95",
+                                                    card.completed_at ? "text-emerald-500" : (isFullCover ? (textTheme === 'light' ? "text-white/80 hover:text-white" : "text-zinc-900/80 hover:text-zinc-900") : "text-muted-foreground/40 hover:text-primary")
+                                                )}
+                                                onClick={handleToggleComplete}
+                                                disabled={isToggling}
+                                            >
+                                                {isToggling ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : card.completed_at ? (
+                                                    <CheckCircle2 className="h-4 w-4" />
+                                                ) : (
+                                                    <Circle className="h-4 w-4 stroke-[2.5px]" />
+                                                )}
+                                            </motion.button>
+                                        )}
+                                        <span className={cn(isFullCover && "font-semibold")}>{card.title}</span>
                                     </div>
                                 )}
                                 {/* Timer Status */}
@@ -302,12 +325,6 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                                 </AvatarFallback>
                                             </Avatar>
                                         </AvatarStack>
-                                    )}
-
-                                    {card.ice_score && (
-                                        <div className="text-[9px] font-bold text-muted-foreground/80 bg-muted/50 px-1.5 py-0.5 rounded border border-border/40 flex items-center">
-                                            ICE {Number(card.ice_score).toFixed(1)}
-                                        </div>
                                     )}
 
                                     {/* Unified Label Rendering for Master (JSONB) and Client (Joined) */}
@@ -341,74 +358,6 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                         }
                                         return null;
                                     })()}
-
-                                    {/* Organization Badge (Master View) */}
-                                    {isMasterView && card.organization_name && (
-                                        <span
-                                            className={cn(
-                                                "text-[9px] px-1.5 py-0.5 rounded font-black tracking-widest text-white shadow-sm",
-                                                card.organization_color ||
-                                                (() => {
-                                                    const colors = ['bg-blue-600', 'bg-purple-600', 'bg-emerald-600', 'bg-orange-600', 'bg-pink-600', 'bg-sky-600', 'bg-indigo-600', 'bg-rose-600'];
-                                                    let hash = 0;
-                                                    for (let i = 0; i < card.organization_name.length; i++) {
-                                                        hash = card.organization_name.charCodeAt(i) + ((hash << 5) - hash);
-                                                    }
-                                                    return colors[Math.abs(hash % colors.length)];
-                                                })()
-                                            )}
-                                        >
-                                            {card.organization_name.substring(0, 3).toUpperCase()}
-                                        </span>
-                                    )}
-                                </div>
-
-                                {/* Right Buttons Row */}
-                                <div className="flex items-center gap-0.5">
-                                    {/* Play Button */}
-                                    {!hideActions && !isCompletedColumn && (
-                                        <button
-                                            onClick={handleQuickStart}
-                                            disabled={isLoadingTimer}
-                                            className={cn(
-                                                "transition-all p-1 rounded-full z-30 pointer-events-auto",
-                                                isFullCover ? "text-white/80 hover:text-white hover:bg-white/20" : "text-primary/60 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30",
-                                                isTimerActive ? (isFullCover ? "opacity-100 text-red-400 bg-white/10" : "opacity-100 text-red-500 bg-red-50 dark:bg-red-900/20") : "opacity-0 group-hover:opacity-100"
-                                            )}
-                                        >
-                                            {isLoadingTimer ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : isTimerActive ? (
-                                                <div className="flex items-center justify-center w-4 h-4">
-                                                    <div className="bg-current rounded-[1px] w-2.5 h-2.5" />
-                                                </div>
-                                            ) : (
-                                                <Play className="h-3.5 w-3.5 fill-current" />
-                                            )}
-                                        </button>
-                                    )}
-
-                                    {/* Complete Button */}
-                                    {!hideActions && (
-                                        <button
-                                            onClick={handleToggleComplete}
-                                            disabled={isToggling}
-                                            className={cn(
-                                                "transition-all opacity-0 group-hover:opacity-100 p-1 rounded-full z-30",
-                                                isFullCover ? "text-white/60 hover:text-white hover:bg-white/20" : "text-muted-foreground/40 hover:text-emerald-600 hover:bg-emerald-50",
-                                                isToggling && "opacity-100 animate-pulse",
-                                                isCompletedColumn && (isFullCover ? "opacity-100 text-emerald-400" : "opacity-100 text-emerald-600")
-                                            )}
-                                        >
-                                            {isToggling ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : isCompletedColumn ? (
-                                                <CheckCircle2 className="h-4 w-4" />
-                                            ) : (
-                                                <Circle className="h-4 w-4" />
-                                            )}
-                                        </button>
-                                    )}
                                 </div>
                             </div>
                         </CardContent>

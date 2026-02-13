@@ -46,6 +46,7 @@ export interface KanbanCard {
     cover_type?: 'color' | 'image' | null;
     cover_value?: string | null;
     cover_mode?: 'header' | 'full';
+    cover_size?: 'small' | 'large';
     cover_text_theme?: 'light' | 'dark';
     // Extended for Master View
     organization_name?: string;
@@ -104,6 +105,7 @@ export interface MasterKanbanCard {
     cover_type?: 'color' | 'image' | null;
     cover_value?: string | null;
     cover_mode?: 'header' | 'full';
+    cover_size?: 'small' | 'large';
     cover_text_theme?: 'light' | 'dark';
     // Labels (JSONB)
     labels: Array<{

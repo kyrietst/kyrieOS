@@ -27,6 +27,7 @@ interface CardCoverSelectorProps {
         type: 'color' | 'image' | null
         value: string | null
         mode: 'header' | 'full'
+        size: 'small' | 'large'
         textTheme: 'light' | 'dark'
     }
     attachments?: any[]
@@ -52,11 +53,13 @@ export default function CardCoverSelector({
                 finalCover.type,
                 finalCover.value,
                 finalCover.mode,
-                finalCover.textTheme
+                finalCover.textTheme,
+                finalCover.size
             )
+            onUpdate?.() // This currently just calls the callback, but Prop Sync in KanbanBoard handles the heavy lifting
             toast.success('Capa atualizada')
-            onUpdate?.()
         } catch (error) {
+            console.error('Update cover error:', error)
             toast.error('Erro ao atualizar capa')
         } finally {
             setIsLoading(false)
@@ -97,32 +100,80 @@ export default function CardCoverSelector({
                             <Button
                                 variant="outline"
                                 className={cn(
-                                    "h-16 flex-col gap-1 items-start p-2 justify-between border-2",
-                                    currentCover.mode === 'header' ? "border-primary bg-primary/5" : "border-border/50"
+                                    "h-16 flex-col gap-0 items-start p-0 justify-start border-2 overflow-hidden",
+                                    currentCover.size === 'small' ? "border-primary bg-primary/5" : "border-border/50"
                                 )}
-                                onClick={() => handleUpdate({ mode: 'header' })}
+                                onClick={() => handleUpdate({ size: 'small' })}
                             >
-                                <div className="w-full h-4 bg-muted rounded-sm overflow-hidden">
-                                    <div className="w-full h-2 bg-primary/40" />
+                                {/* Preview Card */}
+                                <div className="w-full h-full flex flex-col">
+                                    {/* Top Cover */}
+                                    <div
+                                        className="w-full h-1/3 bg-muted"
+                                        style={currentCover.type ? {
+                                            backgroundColor: currentCover.type === 'color' ? currentCover.value! : undefined,
+                                            backgroundImage: currentCover.type === 'image' ? `url(${currentCover.value})` : undefined,
+                                            backgroundSize: 'cover',
+                                            backgroundPosition: 'center'
+                                        } : {}}
+                                    />
+                                    {/* Content Skeleton */}
+                                    <div className="p-1 px-1.5 space-y-1 w-full">
+                                        <div className="h-1 w-full bg-zinc-200 dark:bg-zinc-700 rounded-full" />
+                                        <div className="h-1 w-3/4 bg-zinc-200 dark:bg-zinc-700 rounded-full" />
+                                        <div className="flex gap-1 pt-1 opacity-40">
+                                            <div className="h-1 w-2 bg-zinc-400 rounded-full" />
+                                            <div className="h-1 w-2 bg-zinc-400 rounded-full" />
+                                            <div className="ml-auto h-1 w-1 bg-zinc-400 rounded-full" />
+                                        </div>
+                                    </div>
                                 </div>
-                                <span className="text-[10px] font-medium">Topo (Header)</span>
+                                <div className="absolute bottom-0 inset-x-0 bg-background/90 py-0.5 border-t border-border/40">
+                                    <span className="text-[9px] font-medium leading-none block text-center">Banner</span>
+                                </div>
                             </Button>
                             <Button
                                 variant="outline"
                                 className={cn(
-                                    "h-16 flex-col gap-1 items-start p-2 justify-between border-2",
-                                    currentCover.mode === 'full' ? "border-primary bg-primary/5" : "border-border/50"
+                                    "h-16 flex-col gap-0 items-start p-0 justify-start border-2 overflow-hidden relative group",
+                                    currentCover.size === 'large' ? "border-primary bg-primary/5" : "border-border/50"
                                 )}
-                                onClick={() => handleUpdate({ mode: 'full' })}
+                                onClick={() => handleUpdate({ size: 'large' })}
                             >
-                                <div className="w-full h-4 bg-muted rounded-sm bg-primary/40" />
-                                <span className="text-[10px] font-medium">Cheio (Full)</span>
+                                {/* Full Background Preview */}
+                                <div
+                                    className="w-full h-full relative"
+                                    style={currentCover.type ? {
+                                        backgroundColor: currentCover.type === 'color' ? currentCover.value! : undefined,
+                                        backgroundImage: currentCover.type === 'image' ? `url(${currentCover.value})` : undefined,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center'
+                                    } : { backgroundColor: 'var(--muted)' }}
+                                >
+                                    {/* Content Skeleton Overlay */}
+                                    <div className={cn(
+                                        "absolute inset-0 p-1 px-1.5 flex flex-col justify-end gap-1 pb-4",
+                                        currentCover.textTheme === 'light' ? "bg-black/40" : "bg-white/20"
+                                    )}>
+                                        <div className={cn(
+                                            "h-1 w-full rounded-full",
+                                            currentCover.textTheme === 'light' ? "bg-white/80" : "bg-zinc-900/80"
+                                        )} />
+                                        <div className={cn(
+                                            "h-1 w-3/4 rounded-full",
+                                            currentCover.textTheme === 'light' ? "bg-white/80" : "bg-zinc-900/80"
+                                        )} />
+                                    </div>
+                                </div>
+                                <div className="absolute bottom-0 inset-x-0 bg-background/90 py-0.5 border-t border-border/40">
+                                    <span className="text-[9px] font-medium leading-none block text-center">Capa</span>
+                                </div>
                             </Button>
                         </div>
                     </div>
 
-                    {/* Text Theme (only for full mode) */}
-                    {currentCover.mode === 'full' && (
+                    {/* Text Theme (only for large mode) */}
+                    {currentCover.size === 'large' && (
                         <div className="space-y-2">
                             <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">Cor do Texto</span>
                             <div className="flex gap-2">
