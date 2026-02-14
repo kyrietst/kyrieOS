@@ -140,7 +140,7 @@ export default function CardCoverSelector({
                     </Button>
                 )}
             </PopoverTrigger>
-            <PopoverContent className="w-80 p-0 overflow-hidden" align="start">
+            <PopoverContent className="w-80 p-0 overflow-hidden bg-background/80 backdrop-blur-xl border border-white/10" align="start">
                 <div className="p-4 bg-muted/30 border-b flex items-center justify-between">
                     <h4 className="font-medium leading-none">Capa do Cartão</h4>
                     {currentCover.type && (
@@ -265,7 +265,7 @@ export default function CardCoverSelector({
                     </div>
 
                     {/* Content */}
-                    <div className="min-h-[140px]">
+                    <div className="max-h-[300px] overflow-y-auto glass-scrollbar min-h-[140px] px-1">
                         {activeTab === 'colors' ? (
                             <div className="grid grid-cols-5 gap-2 animate-in fade-in zoom-in-95 duration-200">
                                 {TRELLO_COLORS.map((color) => (

@@ -199,7 +199,7 @@ function SortableColumn({
       </div>
 
       {/* Cards List */}
-      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0 scrollbar-thin scrollbar-thumb-muted-foreground/10 hover:scrollbar-thumb-muted-foreground/20">
+      <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0 glass-scrollbar">
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           <AnimatePresence mode="popLayout">
             {columnCards.map(card => (
@@ -578,7 +578,7 @@ export default function KanbanBoard({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex-1 flex gap-4 overflow-x-auto p-4 items-start scrollbar-thin scrollbar-thumb-muted-foreground/20">
+        <div className="flex-1 flex gap-4 overflow-x-auto p-4 items-start glass-scrollbar">
           <SortableContext items={columns.map(c => c.id)} strategy={horizontalListSortingStrategy}>
             {columns.map(col => (
               <SortableColumn

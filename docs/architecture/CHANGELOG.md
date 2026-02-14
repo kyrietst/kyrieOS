@@ -17,7 +17,13 @@ All notable changes to the Kyrie OS project will be documented in this file.
     - **Density**: Standardized cover height to 150px and tighter typography.
 
 
-### [1.6.0] - 2026-02-14
+### [1.7.1] - 2026-02-14
+### Added
+- **Glassmorphic Scrollbars:** Global utility `.glass-scrollbar` aiming for an "Apple-like" feel.
+- **Documentation Refresh:**
+    - Updated `MASTER_KANBAN_FEATURE.md` to v2.0 reflecting the 12-column infrastructure.
+    - Created `UI_STYLE_GUIDE.md` to standardize the "Borderless" aesthetic.
+
 ### Fixed
 - **Master Kanban Drag-and-Drop:** Resolved card snap-back by synchronizing `master_status` with `column_id` during movements.
 - **Frontend ID Mismatch:** Corrected `SortableCard` ID resolution to support both `id` and `card_id`.

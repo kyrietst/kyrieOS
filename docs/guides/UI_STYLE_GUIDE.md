@@ -1,87 +1,68 @@
-# 🎨 Kyrie OS UI Style Guide
+# 🎨 UI Style Guide: Kyrie OS "Borderless" Estética
 
-> **Philosophy:** "Premium, Borderless, Native-Feel".
-> This guide documents the high-fidelity visual standards established during the Kanban "Ultimate" refactor. All future UI components must adhere to these principles to prevent regression.
+**Filosofia:** "Apple-like", Imersivo, Limpo.
+**Base:** Tailwind CSS + Shadcn UI (Customizado).
 
 ---
 
-## 1. Card Design (The "Borderless" Standard)
+## 1. Princípios de Design
 
-We moved away from traditional `border: 1px solid` to avoid visual clutter and "boxiness", especially in dark mode.
+### 1.1 Borderless (Sem Bordas Físicas)
+Evitamos o uso de `border` (1px solid) em componentes de cartão ou modais complexos, pois criam "ruído" visual, especialmente em modo escuro.
+- **Antes (Evitar):** `border border-border`
+- **Agora (Preferir):** `shadow-sm` ou `ring-1 ring-white/5` (para contraste sutil).
 
-### ✅ Do:
-- **Base:** `!border-0` (No physical border).
-- **Interaction:** Use `ring-1 ring-transparent hover:ring-white/60` (or `black/10` in light mode) to indicate interactivity.
-- **Shadow:** Minimal `shadow-sm` or none.
-- **Background:** `bg-card` for content, `bg-transparent` when using full-cover images.
+### 1.2 Glassmorphism (Vidro)
+Usado para garantir contexto sobre camadas inferiores sem bloquear a visão.
+- **Scrollbars:** Use a classe `.glass-scrollbar`.
+- **Modais/Dropdowns:** `bg-background/80 backdrop-blur-xl`.
+- **Bordas de Vidro:** `border-white/10` para separar sutilmente do fundo.
 
-### ❌ Don't:
-- Use `border-border` class on interactive cards (unless strictly necessary for separation).
-- Use `hover:border-primary` (too aggressive; prefer rings or background shifts).
+### 1.3 Micro-Interações
+O feedback deve ser imediato e tátil.
+- **Hover:** Use `ring-1 ring-primary/20` ou `bg-muted/50` em vez de alterar dimensões.
+- **Active:** Botões devem ter `active:scale-95` para sensação de clique físico.
+
+---
+
+## 2. Componentes Kyriales
+
+### 2.1 Scrollbars (.glass-scrollbar)
+Scrollbar personalizado fino e translúcido. Adicione a classe ao container com `overflow`.
 
 ```tsx
-// Example: KanbanCard.tsx pattern
-<Card
-    className={cn(
-        "group cursor-pointer relative transition-all duration-200",
-        "!border-0 ring-1 ring-transparent hover:ring-white/60 shadow-none",
-        "overflow-hidden !p-0 !gap-0" // Reset internal padding for full control
-    )}
->
+<div className="overflow-y-auto glass-scrollbar">
+  {/* Conteúdo */}
+</div>
 ```
 
----
+### 2.2 Modais (Dialog/Sheet)
+Devem parecer flutuar sobre a interface.
+- **Overlay:** `bg-black/40 backdrop-blur-[2px]`
+- **Content:** `border-none shadow-2xl`
 
-## 2. Density & Spacing
-
-To achieve a "native app" feel, we prioritize density without sacrificing readability.
-
-### ✅ Do:
-- **Tight Headers:** Remove default padding from Shadcn Cards (`!p-0`) and manage it via `CardContent`.
-- **Min-Height:** Use `min-h-[150px]` for cover cards to ensure impact.
-- **Text Alignment:** Push text to the absolute bottom edge (`!pb-1.5`) when using full covers, mimicking Trello/Apple Music style.
-
----
-
-## 3. Typography
-
-- **Titles:** `text-[15px]` (not 16px, not 14px) offers the best balance of readability and density for cards.
-- **Leading:** `leading-tight` or `leading-snug`.
-- **Colors:**
-    - Primary: `text-foreground` / `text-zinc-900`.
-    - Muted: `text-muted-foreground` (approx `zinc-500`).
-    - On Dark/Image: `text-white` or `text-white/80`.
+### 2.3 Kanban Cards
+- **Padding:** Mínimo. O conteúdo define o espaço.
+- **Rounded:** `rounded-lg` ou `rounded-xl`.
+- **Corner Protection:** Em cards com imagem full, use `bg-transparent` no container para evitar "sangramento" de pixels brancos nos cantos.
 
 ---
 
-## 4. Glassmorphism & Overlays
+## 3. Cores & Temas
 
-When placing text over images (Full Covers), use gradients and blurs to ensure readability.
+O sistema respeita o tema claro/escuro automaticamente via variáveis CSS (`globals.css`).
 
-### ✅ Do:
-- **Scrim:** `bg-gradient-to-t from-black/90 via-black/40 to-transparent`.
-- **Badges:** `bg-white/20 backdrop-blur-md` for labels over images.
+| Token | Uso |
+|-------|-----|
+| `bg-background` | Fundo principal da página |
+| `bg-muted` | Fundos secundários (colunas, cards inativos) |
+| `text-muted-foreground` | Texto de apoio/metadata |
+| `ring-primary` | Foco e Ações principais |
 
 ---
 
-## 5. Interaction Patterns
+## 4. Tipografia
 
-### Optimistic UI (The "Instant" Feel)
-Users should never wait for the server to confirm a visual change.
-1. **Update Local State:** `setIsToggling(true)`.
-2. **Trigger Animation:** `confetti`, `layout` spring.
-3. **Server Action:** Call `updateStatus(...)`.
-4. **Revalidation:** `router.refresh()` to sync backend state.
-5. **Rollback:** Only if error occurs (toast error).
-
-```tsx
-// Pattern
-const handleAction = async () => {
-    // 1. Optimistic
-    setLocalState(newValue);
-    // 2. Server
-    await serverAction(id, newValue);
-    // 3. Sync
-    router.refresh();
-}
-```
+- **Font Family:** Inter (Padrão) ou SF Pro (se disponível sistema).
+- **Títulos de Cards:** `text-[15px] font-medium leading-tight`.
+- **Labels:** `text-xs font-medium text-muted-foreground uppercase tracking-wider`.

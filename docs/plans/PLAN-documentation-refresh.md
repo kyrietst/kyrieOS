@@ -1,42 +1,39 @@
-# Plan: Documentation Refresh & Consolidation
+# Documentation Refresh Plan
 
-> **Goal:** Align project documentation with the current high-fidelity system state, specifically recording the recent Kanban "Ultimate" polish, Image Upload features, and visual standards.
+## Goal
+Synchronize the project documentation with the current state of Kyrie OS 2.0, specifically focusing on the recent "Ultimate Kanban" refactor, UI/UX improvements (Glassmorphism), and architectural changes.
 
-## 1. Documentation Cleanup
-- **Action**: Organize `docs/` directory.
-- **Task**:
-    - Ensure all `PLAN-*.md` files are moved to `docs/plans/` (archive).
-    - existing `docs/PLAN-documentation-refresh.md` is this file.
+## Analysis of Current State
+- **README.md**: Good structure, points to `docs/`.
+- **Kanban Docs**: `MASTER_KANBAN_FEATURE.md` exists but likely needs updates to reflect:
+    - New Column Structure (12 Global Columns).
+    - Header Refactor (Search, Filter, Options).
+    - Card Styles (Cover modes, text themes).
+- **UI Documentation**: Lacking a centralized Style Guide for the new "Apple-like" and "Glassmorphism" standards.
 
-## 2. Feature Documentation Updates
+## Proposed Actions
 
-### `docs/features/MASTER_KANBAN_FEATURE.md`
-- **Update Status**: Mark "Upload real de anexos" as `[x]`.
-- **Add Section**: **3.5 Upload & Anexos**
-    - Describe the "Anexos & Upload" tab in `CardCoverSelector`.
-    - Document the Drag & Drop zone (`react-dropzone`).
-    - Explain Supabase Storage integration (Bucket: `card-covers`, RLS policies, file path structure: `orgId/cardId/...`).
-- **Update Section**: **6. Refinamentos Visuais**
-    - Update "Densidade de Informação" to reflect the recent `KanbanCard` fix:
-        - Removal of default `Card` padding (`!p-0`).
-        - `min-height: 150px` for Full Covers.
-        - Tight bottom spacing (`!pb-1.5`) for Trello-like aesthetic.
+### 1. Update `docs/features/MASTER_KANBAN_FEATURE.md`
+- [ ] **Columns**: Document the 12 standard columns and their flow.
+- [ ] **Header**: Explain the new header components (Search, Filter, View Options).
+- [ ] **Cards**: document the cover capabilities, customization, and "Bolinha" checkbox.
+- [ ] **Realtime**: Ensure realtime sync architecture is described.
 
-## 3. New Documentation: `docs/guides/UI_STYLE_GUIDE.md`
-Create a centralized guide to prevent "Frankenstein" UIs.
-- **Core Philosophy**: "Premium, Borderless, Native-Feel".
-- **Topics**:
-    - **Cards**: No physical borders (`border-0`), use `ring-1 ring-transparent hover:ring-white/60` for interaction.
-    - **Glassmorphism**: Use of `bg-white/20 backdrop-blur-md` for badges/overlays.
-    - **Typography**: 15px/14px sizing, `leading-tight` for density.
-    - **Interaction**: Prop-based state updates (Optimistic UI) + Server Actions + `router.refresh()` pattern.
-    - **Colors**: Reference new palette (no "standard red", use Tailwind functional colors).
+### 2. Create `docs/guides/UI_STYLE_GUIDE.md`
+- [ ] **Design Philosophy**: Glassmorphism, "Apple-like" aesthetic, Clean lines.
+- [ ] **Components**:
+    - Scrollbars (`.glass-scrollbar`).
+    - Modals/Popovers (Backdrop blur, borders).
+    - Buttons (Variants).
+- [ ] **Colors & Themes**: Reference `globals.css` variables.
 
-## 4. Architecture Update
-### `docs/architecture/ARCHITECTURE.md`
-- **Update**: Reference the new `UI_STYLE_GUIDE.md`.
-- **Tech Stack**: Confirm Next.js 16 / React 19 / Tailwind 4 presence.
+### 3. Update `docs/architecture/CHANGELOG.md`
+- [ ] Add entry for "Kanban UI Refactor & Glassmorphism".
+- [ ] Add entry for "Dynamic Columns & Header".
 
-## 5. Verification
-- **Links**: Ensure relative links between docs are working.
-- **Consistency**: Verify terms (e.g., "Master Kanban", "Ultimate Infrastructure") are used consistently.
+### 4. Organize Plans
+- [ ] Move recent plan artifacts (from this session) to `docs/plans/` if applicable.
+
+## Verification
+- [ ] AI Review: Verify consistency between code and docs.
+- [ ] User Review: Check if the "Frankenstein" concerns are addressed.
