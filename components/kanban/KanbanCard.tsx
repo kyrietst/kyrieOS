@@ -182,12 +182,14 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
         <>
             <KanbanCardMenu card={card} onOpen={() => setShowDetails(true)}>
                 <motion.div
-                    whileHover={{ y: -4 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                    layout
+                    initial={{ opacity: 0, scale: 1 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
                 >
                     <Card
                         className={cn(
-                            "group cursor-pointer relative transition-all duration-300 border-border/60 hover:border-primary/40 hover:shadow-xl bg-card shadow-sm overflow-hidden",
+                            "group cursor-pointer relative transition-all duration-200 border-border/60 hover:border-white/60 bg-card shadow-sm overflow-hidden",
                             isToggling && "opacity-50 pointer-events-none",
                             isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20",
                             card.justDropped && "animate-success-flash"
@@ -207,7 +209,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                     >
                         {/* Scrim for Full Cover */}
                         {isFullCover && (
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
                         )}
 
                         {/* Pencil icon for Quick Edit */}
@@ -246,12 +248,12 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                         )}
 
                         <CardContent className={cn(
-                            "px-2 py-1 relative z-10 w-full flex flex-col gap-1",
-                            isHeaderCover ? "pt-1" : "pt-1.5",
-                            isFullCover && "justify-end pb-1"
+                            "px-2.5 py-1.5 relative z-10 w-full flex flex-col gap-1",
+                            isHeaderCover ? "pt-1" : "pt-2",
+                            isFullCover && "min-h-[100px] justify-end pb-1"
                         )}>
                             {/* Header: Title */}
-                            <div className="flex items-start justify-between gap-1">
+                            <div className="flex items-start justify-between gap-1.5">
                                 {isEditingTitle ? (
                                     <div className="w-full" onClick={(e) => e.stopPropagation()}>
                                         <Textarea
@@ -268,14 +270,14 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                                     setEditedTitle(card.title);
                                                 }
                                             }}
-                                            className="min-h-[40px] p-1 text-sm font-medium leading-tight resize-none focus-visible:ring-1"
+                                            className="min-h-[50px] p-2 text-[15px] font-medium leading-tight resize-none focus-visible:ring-1"
                                             autoFocus
                                             disabled={isUpdatingTitle}
                                         />
                                     </div>
                                 ) : (
                                     <div className={cn(
-                                        "font-bold text-[12px] leading-[1.2] break-words flex-1 pr-4 flex items-center gap-1",
+                                        "font-medium text-[15px] leading-snug break-words flex-1 pr-4 flex items-center gap-1.5",
                                         isFullCover
                                             ? (textTheme === 'light' ? "text-white" : "text-zinc-900")
                                             : "text-foreground"
@@ -293,11 +295,11 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                                 disabled={isToggling}
                                             >
                                                 {isToggling ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                 ) : card.completed_at ? (
-                                                    <CheckCircle2 className="h-3 w-3" />
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
                                                 ) : (
-                                                    <Circle className="h-3 w-3 stroke-[2.5px]" />
+                                                    <Circle className="h-3.5 w-3.5 stroke-[2.5px]" />
                                                 )}
                                             </motion.button>
                                         )}
