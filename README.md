@@ -86,7 +86,7 @@ A documentação técnica do sistema está centralizada na pasta `docs/`:
 - **[Arquitetura e Segurança](./docs/architecture/)**: Specs de API, Diagramas, RLS e Migrations.
 - **[Funcionalidades (PRDs)](./docs/features/)**: Requisitos e especificações de cada módulo.
 - **[Planos de Implementação](./docs/plans/)**: Roadmaps e planos de execução aprovados.
-- **[Guias e Walkthroughs](./docs/guides/)**: Histórico de mudanças e guias de onboarding.
+- **[Guias e Style Guide](./docs/guides/)**: UI Style Guide (Kanban), Histórico de mudanças e guias de onboarding.
 
 ---
 

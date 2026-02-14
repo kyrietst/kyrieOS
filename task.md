@@ -1,27 +1,12 @@
-# Tasks - Week 3: Admin Dashboard (The "God Mode")
+# Task: Kanban Image Upload
 
-- [x] **Admin Dashboard Core** (`/kyrie/dashboard`) (COMPLETED)
-  - [x] **KPI Cards**: Implemented generic `AdminMetricsCard` and integrated.
-  - [x] **Recent Activity Feed**: Implemented component and integrated.
-  - [x] **AI Quick Actions**: Added UI placeholder in Dashboard.
-
-- [x] **Client Management** (`/kyrie/clients`) (COMPLETED)
-  - [x] **Client List Table**: Implemented with filtering, sorting, and dropdown
-        actions.
-  - [x] **"Impersonate" Feature**: Added to dropdown menu (UI only).
-  - [x] **Page Layout**: Implemented.
-
-- [/] **Backlog & Tasks** (`/kyrie/backlog`) (Next Steps)
-  - [ ] **Global Task Board**: See tasks across all clients.
-  - [ ] **Filter by Client**: Dropdown to focus on one project.
-
-- [x] **AI Insights Center** (`/kyrie/insights`) (COMPLETED)
-  - [x] **Aggregated Reports**: Implemented dashboard view.
-  - [x] **Anomaly Detection**: Implemented UI for anomalies and recommendations.
-
----
-
-## Previous Weeks (Completed)
-
-- [x] **Week 1 (Foundation)**: Auth, Roles, DB, Layouts.
-- [x] **Week 2 (AI Layer)**: Python Backend, Report Agent, Integration.
+- [x] **Cleanup** <!-- id: 0 -->
+    - [x] Move any remaining `PLAN-*.md` to `docs/plans/` <!-- id: 1 -->
+- [x] **Feature Documentation** <!-- id: 2 -->
+    - [x] Update `MASTER_KANBAN_FEATURE.md` (Image Upload & Spacing) <!-- id: 3 -->
+- [x] **Guides** <!-- id: 4 -->
+    - [x] Create `docs/guides/UI_STYLE_GUIDE.md` <!-- id: 5 -->
+- [x] **Architecture** <!-- id: 6 -->
+    - [x] Update `ARCHITECTURE.md` to reference Style Guide <!-- id: 7 -->
+- [x] **Verification** <!-- id: 8 -->
+    - [x] Verify links and structure <!-- id: 9 -->

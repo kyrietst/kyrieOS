@@ -1,37 +1,42 @@
-# PLAN: Documentation Refresh & Maintenance
+# Plan: Documentation Refresh & Consolidation
 
-🤖 **Applying knowledge of @documentation-writer, @explorer-agent & @project-planner...**
+> **Goal:** Align project documentation with the current high-fidelity system state, specifically recording the recent Kanban "Ultimate" polish, Image Upload features, and visual standards.
 
-## deliverable: docs/PLAN-documentation-refresh.md
+## 1. Documentation Cleanup
+- **Action**: Organize `docs/` directory.
+- **Task**:
+    - Ensure all `PLAN-*.md` files are moved to `docs/plans/` (archive).
+    - existing `docs/PLAN-documentation-refresh.md` is this file.
 
-## Context
-Recent rapid development has introduced advanced features (High-Fidelity Covers, Real-time Sync, UI Cleanups) that are not yet fully documented in our technical guides. We need to update existing docs and organize the file structure to guide future developers.
+## 2. Feature Documentation Updates
 
-## Proposed Changes
+### `docs/features/MASTER_KANBAN_FEATURE.md`
+- **Update Status**: Mark "Upload real de anexos" as `[x]`.
+- **Add Section**: **3.5 Upload & Anexos**
+    - Describe the "Anexos & Upload" tab in `CardCoverSelector`.
+    - Document the Drag & Drop zone (`react-dropzone`).
+    - Explain Supabase Storage integration (Bucket: `card-covers`, RLS policies, file path structure: `orgId/cardId/...`).
+- **Update Section**: **6. Refinamentos Visuais**
+    - Update "Densidade de Informação" to reflect the recent `KanbanCard` fix:
+        - Removal of default `Card` padding (`!p-0`).
+        - `min-height: 150px` for Full Covers.
+        - Tight bottom spacing (`!pb-1.5`) for Trello-like aesthetic.
 
-### [explorer-agent] Discovery & Audit
-- [x] Scan `docs/` for outdated information and messy file placement.
-- [ ] Verify recent code changes (Covers, Real-time) against current `ARCHITECTURE.md`.
+## 3. New Documentation: `docs/guides/UI_STYLE_GUIDE.md`
+Create a centralized guide to prevent "Frankenstein" UIs.
+- **Core Philosophy**: "Premium, Borderless, Native-Feel".
+- **Topics**:
+    - **Cards**: No physical borders (`border-0`), use `ring-1 ring-transparent hover:ring-white/60` for interaction.
+    - **Glassmorphism**: Use of `bg-white/20 backdrop-blur-md` for badges/overlays.
+    - **Typography**: 15px/14px sizing, `leading-tight` for density.
+    - **Interaction**: Prop-based state updates (Optimistic UI) + Server Actions + `router.refresh()` pattern.
+    - **Colors**: Reference new palette (no "standard red", use Tailwind functional colors).
 
-### [documentation-writer] Content Updates
+## 4. Architecture Update
+### `docs/architecture/ARCHITECTURE.md`
+- **Update**: Reference the new `UI_STYLE_GUIDE.md`.
+- **Tech Stack**: Confirm Next.js 16 / React 19 / Tailwind 4 presence.
 
-#### [MODIFY] [MASTER_KANBAN_FEATURE.md](file:///d:/1. LUCCAS/aplicativos ai/KyrieOS10/kyrieOS/docs/features/MASTER_KANBAN_FEATURE.md)
-- [x] Add **Advanced Covers** section: Explain Banner vs Large modes, Color vs Attachment images.
-- [x] Add **Text Theme Contrast** section: Explain Light/Dark text theme logic.
-- [x] Add **Real-time Board** section: Explain Prop-Sync and Supabase Realtime integration.
-
-#### [MODIFY] [ARCHITECTURE.md](file:///d:/1. LUCCAS/aplicativos ai/KyrieOS10/kyrieOS/docs/architecture/ARCHITECTURE.md)
-- [x] Update Technical Stack to include `@supabase/ssr` Realtime patterns.
-- [x] Expand on the "Ultimate Kanban" infrastructure to include the reactive sync mechanics.
-
-#### [NEW] [UI_STYLE_GUIDE.md](file:///d:/1. LUCCAS/aplicativos ai/KyrieOS10/kyrieOS/docs/guides/UI_STYLE_GUIDE.md)
-- [x] Document the "Trello High-Fidelity" rules (e.g., hover indicators, skeleton cards in selectors, Purple Ban).
-
-### [orchestrator] Structural Maintenance
-- [x] Move all remaining `PLAN-*.md` files from `docs/` root to `docs/plans/`.
-- [x] Update `CHANGELOG.md` with the cumulative changes since version 1.2.
-
-## Verification Plan
-1. **Consistency Check**: Ensure all documentation reflects the current code in `components/kanban`.
-2. **Link Verification**: Ensure all internal markdown links work correctly after moving files.
-3. **Accuracy**: Verify that the architectural descriptions match the React hooks and types used.
+## 5. Verification
+- **Links**: Ensure relative links between docs are working.
+- **Consistency**: Verify terms (e.g., "Master Kanban", "Ultimate Infrastructure") are used consistently.

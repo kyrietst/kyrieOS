@@ -4,6 +4,19 @@ All notable changes to the Kyrie OS project will be documented in this file.
 
 ## [Unreleased]
 
+### [1.7.0] - 2026-02-13
+### Added
+- **UI Style Guide**: Created `docs/guides/UI_STYLE_GUIDE.md` defining the new "Borderless" Kanban aesthetic.
+- **Documentation Refresh**: Organized implementation plans into `docs/plans/`.
+
+### Changed
+- **Kanban Visuals (High Fidelity)**:
+    - **Borderless**: Removed physical borders (`border-0`) to eliminate artifacts.
+    - **Ring Strategy**: Replaced border-hover with `ring-1` for smoother interaction.
+    - **Corner Protection**: Fixed background bleed on rounded corners using `bg-transparent`.
+    - **Density**: Standardized cover height to 150px and tighter typography.
+
+
 ### [1.6.0] - 2026-02-14
 ### Fixed
 - **Master Kanban Drag-and-Drop:** Resolved card snap-back by synchronizing `master_status` with `column_id` during movements.

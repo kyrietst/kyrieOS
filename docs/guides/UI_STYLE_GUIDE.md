@@ -1,38 +1,87 @@
-# 🎨 Kyrie OS UI Style Guide (High-Fidelity)
+# 🎨 Kyrie OS UI Style Guide
 
-🤖 **Applying knowledge of @frontend-specialist & @mobile-design...**
+> **Philosophy:** "Premium, Borderless, Native-Feel".
+> This guide documents the high-fidelity visual standards established during the Kanban "Ultimate" refactor. All future UI components must adhere to these principles to prevent regression.
 
-Este guia define os padrões estéticos e de interação para o Kyrie OS, garantindo que novas funcionalidades mantenham o nível de polimento "Trello-like".
+---
 
-## 1. Princípios de Design
+## 1. Card Design (The "Borderless" Standard)
 
-### 👑 O "Toque Trello"
-- **Fidelidade Funcional**: Se uma funcionalidade existe (ex: Capa), ela deve se comportar e parecer com a referência líder de mercado.
-- **Micro-interações**: Hover states são obrigatórios. Use indicadores sutis (ex: círculos de check que aparecem suavemente) em vez de botões estáticos.
-- **Skeletons Reais**: Em seletores (como o de capas), mostre um "mockup" real do que vai acontecer, não apenas ícones ou cores.
+We moved away from traditional `border: 1px solid` to avoid visual clutter and "boxiness", especially in dark mode.
 
-### 🚫 A "Purple Ban" (Banimento do Violeta)
-- **Regra**: Não utilize tons de roxo/violeta vibrante como cor primária em interfaces de dashboard. 
-- **Alternativas**: Use tons de **Zinc**, **Slate**, ou cores de marca específicas (esmeralda, azul profundo) com opacidade controlada.
+### ✅ Do:
+- **Base:** `!border-0` (No physical border).
+- **Interaction:** Use `ring-1 ring-transparent hover:ring-white/60` (or `black/10` in light mode) to indicate interactivity.
+- **Shadow:** Minimal `shadow-sm` or none.
+- **Background:** `bg-card` for content, `bg-transparent` when using full-cover images.
 
-## 2. Componentes Kanban
+### ❌ Don't:
+- Use `border-border` class on interactive cards (unless strictly necessary for separation).
+- Use `hover:border-primary` (too aggressive; prefer rings or background shifts).
 
-### 🧬 Card Skeletons
-- Devem incluir linhas de título, metadados (timer, anexos) e indicadores de progresso.
-- Usar `animate-pulse` ou `opacity` transitions para feedback de carregamento.
+```tsx
+// Example: KanbanCard.tsx pattern
+<Card
+    className={cn(
+        "group cursor-pointer relative transition-all duration-200",
+        "!border-0 ring-1 ring-transparent hover:ring-white/60 shadow-none",
+        "overflow-hidden !p-0 !gap-0" // Reset internal padding for full control
+    )}
+>
+```
 
-### 🌓 Contraste de Texto
-- **Regra de Ouro**: O usuário deve poder escolher o tema do texto (Claro/Escuro) para capas.
-- **Claro**: White (`#FFFFFF`)
-- **Escuro**: Zinc-900 (`#09090b`)
+---
 
-## 3. Animações (Framer Motion)
-- **Damping**: 30
-- **Stiffness**: 600
-- **Layout Animations**: Sempre use a prop `layout` para movimentos de drag-and-drop suaves.
+## 2. Density & Spacing
 
-## 4. Checklist de Qualidade UI
-- [ ] O componente respeita o tema de cores?
-- [ ] Existe feedback visual no Hover?
-- [ ] O espaçamento (padding/gap) segue a escala de 4px?
-- [ ] A acessibilidade foi mantida (DialogTitle presente)?
+To achieve a "native app" feel, we prioritize density without sacrificing readability.
+
+### ✅ Do:
+- **Tight Headers:** Remove default padding from Shadcn Cards (`!p-0`) and manage it via `CardContent`.
+- **Min-Height:** Use `min-h-[150px]` for cover cards to ensure impact.
+- **Text Alignment:** Push text to the absolute bottom edge (`!pb-1.5`) when using full covers, mimicking Trello/Apple Music style.
+
+---
+
+## 3. Typography
+
+- **Titles:** `text-[15px]` (not 16px, not 14px) offers the best balance of readability and density for cards.
+- **Leading:** `leading-tight` or `leading-snug`.
+- **Colors:**
+    - Primary: `text-foreground` / `text-zinc-900`.
+    - Muted: `text-muted-foreground` (approx `zinc-500`).
+    - On Dark/Image: `text-white` or `text-white/80`.
+
+---
+
+## 4. Glassmorphism & Overlays
+
+When placing text over images (Full Covers), use gradients and blurs to ensure readability.
+
+### ✅ Do:
+- **Scrim:** `bg-gradient-to-t from-black/90 via-black/40 to-transparent`.
+- **Badges:** `bg-white/20 backdrop-blur-md` for labels over images.
+
+---
+
+## 5. Interaction Patterns
+
+### Optimistic UI (The "Instant" Feel)
+Users should never wait for the server to confirm a visual change.
+1. **Update Local State:** `setIsToggling(true)`.
+2. **Trigger Animation:** `confetti`, `layout` spring.
+3. **Server Action:** Call `updateStatus(...)`.
+4. **Revalidation:** `router.refresh()` to sync backend state.
+5. **Rollback:** Only if error occurs (toast error).
+
+```tsx
+// Pattern
+const handleAction = async () => {
+    // 1. Optimistic
+    setLocalState(newValue);
+    // 2. Server
+    await serverAction(id, newValue);
+    // 3. Sync
+    router.refresh();
+}
+```

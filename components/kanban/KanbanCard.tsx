@@ -189,7 +189,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                 >
                     <Card
                         className={cn(
-                            "group cursor-pointer relative transition-all duration-200 !border-0 ring-1 ring-transparent hover:ring-white/60 shadow-none overflow-hidden",
+                            "group cursor-pointer relative transition-all duration-200 !border-0 ring-1 ring-transparent hover:ring-white/60 shadow-none overflow-hidden !p-0 !gap-0",
                             isFullCover ? "bg-transparent" : "bg-card",
                             isToggling && "opacity-50 pointer-events-none",
                             isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20",
@@ -251,7 +251,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                         <CardContent className={cn(
                             "px-2.5 py-1.5 relative z-10 w-full flex flex-col gap-1",
                             isHeaderCover ? "pt-1" : "pt-2",
-                            isFullCover && "min-h-[100px] justify-end pb-1"
+                            isFullCover && "min-h-[150px] justify-end !pb-1.5"
                         )}>
                             {/* Header: Title */}
                             <div className="flex items-start justify-between gap-1.5">

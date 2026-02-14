@@ -70,6 +70,12 @@ Refinamos o sistema de capas para máxima fidelidade visual:
 - **Timeline:** Registra quem moveu, editou ou comentou.
 - **Input de Comentário:** Campo de texto para interação da equipe.
 
+### 3.5 Upload & Anexos
+- **Tab Dedicada:** Nova aba "Anexos & Upload" no seletor de capas.
+- **Drag & Drop:** Área de dropzone interativa para upload intuitivo.
+- **Armazenamento:** Arquivos salvos no bucket `card-covers` do Supabase Storage.
+- **Organização:** Estrutura de pastas `orgId/cardId/filename` para manter a higiene do storage.
+
 ---
 
 ## 4. Reatividade em Tempo Real (Sync)
@@ -103,7 +109,25 @@ Implementamos um motor de sincronização para eliminar a necessidade de refresh
 
 ---
 
+## 6. Refinamentos Visuais (Polimento V1-V6)
+
+O Kanban passou por um processo rigoroso de refinamento visual ("Apple-like") para garantir imersão:
+
+### 6.1 Filosofia "Borderless"
+- **Sem Bordas Físicas**: Removemos `border-width: 1px` que criava artefatos em fundos escuros/gradientes.
+- **Ring Hover**: Utilizamos `ring-1` (box-shadow) para o efeito de hover branco, evitando mudanças de layout.
+- **Corner Protection**: Cards com capa cheia usam `bg-transparent` para evitar que o fundo do card "sangre" pelas bordas arredondadas.
+
+### 6.2 Densidade de Informação
+- **Typography**: Títulos reduzidos para 15px com `leading-tight`.
+- **Min-Height:** Capas padronizadas em ~150px para compensar a falta de padding externo.
+- **Padding/Gap:** 
+    - Removidos padding e gaps padrão do container (`!p-0 !gap-0`).
+    - Padding inferior ajustado (`!pb-1.5`) para manter o título próximo à borda (Estilo Trello).
+
+---
+
 - [x] Refinar modo "Capa" (Full) com título e hover indicators.
 - [x] Implementar sincronização real-time com Supabase.
-- [ ] Implementar upload real de anexos (Supabase Storage).
+- [x] Upload real de anexos (Supabase Storage).
 - [ ] Persistir comentários no banco de dados (`task_comments`).

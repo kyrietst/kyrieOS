@@ -284,6 +284,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                             attachments={attachments}
                             onUpdate={fetchCard}
                             variant="icon"
+                            organizationId={card.organization_id}
                         />
 
                         {/* More Actions Dropdown (Moved from Action Bar) */}
