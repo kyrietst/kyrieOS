@@ -189,7 +189,8 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                 >
                     <Card
                         className={cn(
-                            "group cursor-pointer relative transition-all duration-200 border-border/60 hover:border-white/60 bg-card shadow-sm overflow-hidden",
+                            "group cursor-pointer relative transition-all duration-200 !border-0 ring-1 ring-transparent hover:ring-white/60 shadow-none overflow-hidden",
+                            isFullCover ? "bg-transparent" : "bg-card",
                             isToggling && "opacity-50 pointer-events-none",
                             isTimerActive && "ring-2 ring-red-500/50 shadow-red-100 dark:shadow-red-900/20",
                             card.justDropped && "animate-success-flash"
