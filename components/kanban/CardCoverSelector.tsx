@@ -38,6 +38,7 @@ interface CardCoverSelectorProps {
     onUpdate?: () => void
     variant?: 'button' | 'icon'
     organizationId?: string // Helpful for storage path organization
+    className?: string
 }
 
 export default function CardCoverSelector({
@@ -46,7 +47,8 @@ export default function CardCoverSelector({
     attachments = [],
     onUpdate,
     variant = 'button',
-    organizationId = 'global'
+    organizationId = 'global',
+    className
 }: CardCoverSelectorProps) {
     const router = useRouter()
     const [isLoading, setIsLoading] = useState(false)
@@ -128,11 +130,11 @@ export default function CardCoverSelector({
         <Popover>
             <PopoverTrigger asChild>
                 {variant === 'icon' ? (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="icon" className={cn("h-8 w-8 text-muted-foreground hover:text-foreground", className)}>
                         <ImageIcon className="h-4 w-4" />
                     </Button>
                 ) : (
-                    <Button variant="secondary" size="sm" className="h-8 gap-2">
+                    <Button variant="secondary" size="sm" className={cn("h-8 gap-2", className)}>
                         <ImageIcon className="h-4 w-4" />
                         Capa
                     </Button>

@@ -3,13 +3,13 @@
 
 import { useMasterKanban } from '@/hooks/useMasterKanban';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
-import { Input } from '@/components/ui/input';
+
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search } from 'lucide-react';
+
 import { useState, useEffect, useMemo } from 'react';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { GlobalCommandMenu } from '@/components/layout/GlobalCommandMenu';
+
 
 export default function MasterKanbanPage() {
     usePageTitle('Workspace Master Kanban');
@@ -34,7 +34,6 @@ function MasterKanbanContent() {
 
     const extraActions = useMemo(() => (
         <div className="flex items-center gap-2">
-            <GlobalCommandMenu />
             <Select
                 value={filters.status || "all"}
                 onValueChange={(val) => updateFilters({ status: val === "all" ? null : val as any })}

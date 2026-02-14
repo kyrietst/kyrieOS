@@ -392,6 +392,7 @@ export async function updateColumnName(columnId: string, newName: string) {
 
   if (error) throw error
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
 }
 
 export async function deleteColumn(columnId: string, moveCardsToColumnId?: string) {

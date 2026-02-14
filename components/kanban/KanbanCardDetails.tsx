@@ -22,13 +22,13 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { useState, useRef, useEffect } from 'react'
-import { updateCardDetails } from '@/actions/kanban'
+import { updateCardDetails, toggleCardCompletion } from '@/actions/kanban'
 import { toast } from 'sonner'
 import {
     Loader2,
     X,
     AlignLeft,
-    CreditCard,
+    Check,
     User,
     Tag,
     CheckSquare,
@@ -98,6 +98,21 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     const [impact, setImpact] = useState(card.impact || 5)
     const [confidence, setConfidence] = useState(card.confidence || 5)
     const [effort, setEffort] = useState(card.effort || 5)
+
+    // Completion State (Optimistic)
+    const [isCompleted, setIsCompleted] = useState(card.kanban_columns?.is_done_column || false)
+
+    const handleToggleComplete = async () => {
+        const newState = !isCompleted
+        setIsCompleted(newState)
+        try {
+            await toggleCardCompletion(card.id, card.column_id, card.organization_id)
+            toast.success(newState ? "Tarefa concluída" : "Tarefa reaberta")
+        } catch (error) {
+            setIsCompleted(!newState)
+            toast.error("Erro ao atualizar status")
+        }
+    }
 
     const coverData = {
         type: card.cover_type as 'color' | 'image' | null,
@@ -190,138 +205,203 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-5xl h-[95vh] md:h-auto md:max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#F4F5F7] dark:bg-zinc-900 border-none shadow-2xl [&>button]:hidden">
-                {/* Card Cover Preview in Details */}
-                {coverData.type && (
-                    <div
-                        className={cn(
-                            "w-full h-32 shrink-0 relative flex items-end p-4",
-                            coverData.type === 'color' ? "" : "bg-muted"
-                        )}
-                        style={{
-                            backgroundColor: coverData.type === 'color' ? coverData.value! : undefined,
-                            backgroundImage: coverData.type === 'image' ? `url(${coverData.value})` : undefined,
-                            backgroundSize: 'cover',
-                            backgroundPosition: 'center'
-                        }}
-                    >
-                        {/* Scrim for visibility if full or just as a finish */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                    </div>
-                )}
+            <DialogContent hideCloseButton className="max-w-7xl h-[95vh] md:h-auto md:max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden bg-[#F4F5F7] dark:bg-zinc-900 border-none shadow-2xl [&>button]:hidden">
+                {/* Header Area */}
+                <div className="relative w-full shrink-0 group">
+                    {/* Cover Image/Color */}
+                    {coverData.type && (
+                        <div
+                            className={cn(
+                                "w-full h-32 sm:h-40 shrink-0 relative flex items-end transition-all duration-300",
+                                coverData.type === 'color' ? "" : "bg-muted"
+                            )}
+                            style={{
+                                backgroundColor: coverData.type === 'color' ? coverData.value! : undefined,
+                                backgroundImage: coverData.type === 'image' ? `url(${coverData.value})` : undefined,
+                                backgroundSize: 'cover',
+                                backgroundPosition: 'center'
+                            }}
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-90" />
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent opacity-80" />
+                        </div>
+                    )}
 
-                <DialogHeader className="sr-only">
-                    <DialogTitle>{card.title}</DialogTitle>
-                </DialogHeader>
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>{card.title}</DialogTitle>
+                    </DialogHeader>
 
-                {/* HEADER BAR (Navigation & Window Controls) */}
-                <div className="flex justify-between items-center px-4 py-3 md:px-6 md:py-4 bg-transparent shrink-0">
-                    {/* LEFT: Column Navigation */}
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 gap-2 font-semibold text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5">
-                                <CreditCard className="w-4 h-4" />
-                                <span>{card.kanban_columns?.name || 'Sem coluna'}</span>
-                                <ChevronDown className="w-3 h-3 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-60 p-0" align="start">
-                            <div className="p-2 text-xs font-medium text-muted-foreground border-b bg-muted/50">
-                                Mover cartão
-                            </div>
-                            <div className="p-2 space-y-1">
-                                <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal h-8">
-                                    <Layout className="w-3 h-3 mr-2" /> Para outro Quadro...
+                    {/* Controls Overlay */}
+                    <div className={cn(
+                        "flex justify-between items-start p-3 md:p-4 z-20 transition-all duration-200",
+                        coverData.type
+                            ? "absolute top-0 left-0 right-0"
+                            : "relative border-b border-border/40 bg-background/50 backdrop-blur-sm"
+                    )}>
+                        {/* LEFT: Column Navigation */}
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={cn(
+                                        "h-8 gap-2 font-semibold transition-colors border",
+                                        coverData.type
+                                            ? "text-white hover:text-white bg-black/20 hover:bg-black/30 backdrop-blur-sm border-transparent"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 border-transparent"
+                                    )}
+                                >
+                                    <Layout className="w-4 h-4" />
+                                    <span>{card.kanban_columns?.name || 'Sem coluna'}</span>
+                                    <ChevronDown className="w-3 h-3 opacity-50" />
                                 </Button>
-                                <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal h-8">
-                                    <List className="w-3 h-3 mr-2" /> Para outra Lista...
-                                </Button>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
-
-                    {/* RIGHT: Window Controls */}
-                    <div className="flex items-center gap-1">
-                        {/* Follow */}
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                            <Megaphone className="w-4 h-4" />
-                        </Button>
-
-                        {/* Timer Toggle (Header) */}
-                        <div className="flex items-center mx-1">
-                            {isTimerActive && activeTimer ? (
-                                <div className="flex items-center bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-md px-2 py-1 gap-2 border border-red-200 dark:border-red-900/50">
-                                    <TimerBadge startTime={activeTimer.start_time} variant="minimal" className="bg-transparent text-inherit p-0" />
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-6 w-6 p-0 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300"
-                                        onClick={handleStopTimer}
-                                        disabled={isTimerLoading}
-                                    >
-                                        {isTimerLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Square className="w-3 h-3 fill-current" />}
+                            </PopoverTrigger>
+                            <PopoverContent className="w-60 p-0" align="start">
+                                <div className="p-2 text-xs font-medium text-muted-foreground border-b bg-muted/50">
+                                    Mover cartão
+                                </div>
+                                <div className="p-2 space-y-1">
+                                    <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal h-8">
+                                        <Layout className="w-3 h-3 mr-2" /> Para outro Quadro...
+                                    </Button>
+                                    <Button variant="ghost" size="sm" className="w-full justify-start text-xs font-normal h-8">
+                                        <List className="w-3 h-3 mr-2" /> Para outra Lista...
                                     </Button>
                                 </div>
-                            ) : (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 gap-2 border-dashed text-muted-foreground hover:text-foreground hover:border-solid hover:border-red-500 hover:text-red-600 dark:hover:text-red-400"
-                                    onClick={handleStartTimer}
-                                    disabled={isTimerLoading}
-                                >
-                                    {isTimerLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                                    <span className="hidden sm:inline text-xs">Iniciar Timer</span>
-                                </Button>
-                            )}
+                            </PopoverContent>
+                        </Popover>
+
+                        {/* RIGHT: Window Controls */}
+                        <div className="flex items-center gap-1">
+                            {/* Follow */}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                    "h-8 w-8 transition-colors",
+                                    coverData.type
+                                        ? "text-white hover:text-white bg-black/20 hover:bg-black/30 backdrop-blur-sm"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                                )}
+                            >
+                                <Megaphone className="w-4 h-4" />
+                            </Button>
+
+                            {/* Timer Toggle (Header) */}
+                            <div className="flex items-center mx-1">
+                                {isTimerActive && activeTimer ? (
+                                    <div className="flex items-center bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-md px-2 py-1 gap-2 border border-red-200 dark:border-red-900/50 shadow-sm">
+                                        <TimerBadge startTime={activeTimer.start_time} variant="minimal" className="bg-transparent text-inherit p-0 font-medium" />
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            className="h-6 w-6 p-0 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300"
+                                            onClick={handleStopTimer}
+                                            disabled={isTimerLoading}
+                                        >
+                                            {isTimerLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Square className="w-3 h-3 fill-current" />}
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <Button
+                                        variant={coverData.type ? "ghost" : "outline"}
+                                        size="sm"
+                                        className={cn(
+                                            "h-8 gap-2 border-dashed transition-all",
+                                            coverData.type
+                                                ? "text-white hover:text-white bg-black/20 hover:bg-black/30 backdrop-blur-sm border-transparent"
+                                                : "text-muted-foreground hover:text-foreground hover:border-solid hover:border-red-500 hover:text-red-600 dark:hover:text-red-400"
+                                        )}
+                                        onClick={handleStartTimer}
+                                        disabled={isTimerLoading}
+                                    >
+                                        {isTimerLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
+                                        <span className="hidden sm:inline text-xs">Iniciar Timer</span>
+                                    </Button>
+                                )}
+                            </div>
+
+                            {/* Card Cover Picker */}
+                            <CardCoverSelector
+                                cardId={card.id}
+                                currentCover={coverData}
+                                attachments={attachments}
+                                onUpdate={fetchCard}
+                                variant="icon"
+                                organizationId={card.organization_id}
+                                className={cn(
+                                    coverData.type
+                                        ? "text-white hover:text-white bg-black/20 hover:bg-black/30 backdrop-blur-sm"
+                                        : ""
+                                )}
+                            />
+
+                            {/* More Actions Dropdown */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                            "h-8 w-8 transition-colors",
+                                            coverData.type
+                                                ? "text-white hover:text-white bg-black/20 hover:bg-black/30 backdrop-blur-sm"
+                                                : "text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5"
+                                        )}
+                                    >
+                                        <MoreHorizontal className="w-4 h-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem><MoveRight className="w-4 h-4 mr-2" /> Mover</DropdownMenuItem>
+                                    <DropdownMenuItem><Copy className="w-4 h-4 mr-2" /> Copiar</DropdownMenuItem>
+                                    <DropdownMenuItem><Layout className="w-4 h-4 mr-2" /> Criar modelo</DropdownMenuItem>
+                                    <Separator className="my-1" />
+                                    <DropdownMenuItem className="text-red-600"><Archive className="w-4 h-4 mr-2" /> Arquivar</DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            {/* Close Button */}
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={onClose}
+                                className={cn(
+                                    "h-8 w-8 ml-1 transition-colors",
+                                    coverData.type
+                                        ? "text-white hover:text-white hover:bg-white/20 bg-black/20 hover:bg-black/30 backdrop-blur-sm"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10"
+                                )}
+                            >
+                                <X className="w-5 h-5" />
+                            </Button>
                         </div>
-
-
-                        {/* Card Cover Picker (Relocated to Header) */}
-                        <CardCoverSelector
-                            cardId={card.id}
-                            currentCover={coverData}
-                            attachments={attachments}
-                            onUpdate={fetchCard}
-                            variant="icon"
-                            organizationId={card.organization_id}
-                        />
-
-                        {/* More Actions Dropdown (Moved from Action Bar) */}
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground">
-                                    <MoreHorizontal className="w-4 h-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem><MoveRight className="w-4 h-4 mr-2" /> Mover</DropdownMenuItem>
-                                <DropdownMenuItem><Copy className="w-4 h-4 mr-2" /> Copiar</DropdownMenuItem>
-                                <DropdownMenuItem><Layout className="w-4 h-4 mr-2" /> Criar modelo</DropdownMenuItem>
-                                <Separator className="my-1" />
-                                <DropdownMenuItem className="text-red-600"><Archive className="w-4 h-4 mr-2" /> Arquivar</DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        {/* Close Button */}
-                        <Button variant="ghost" size="icon" onClick={onClose} className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-black/10 dark:hover:bg-white/10 ml-1">
-                            <X className="w-5 h-5" />
-                        </Button>
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto px-6 pb-8 md:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+                <div className="flex-1 overflow-y-auto">
+                    <div className="flex flex-col md:flex-row min-h-full">
 
-                        {/* Main Column (Left - 70%) */}
-                        <div className="md:col-span-8 space-y-6">
+                        {/* Main Column (Left - Fluid) */}
+                        <div className="flex-1 p-6 md:p-8 space-y-6 bg-background">
 
                             {/* Header: Title Only */}
                             <div className="flex gap-4">
                                 {/* Circle/Icon for Title often used in Trello, can simulate 'status' or just icon */}
-                                <div className="mt-2 text-muted-foreground">
-                                    {/* Replaced CreditCard with Circle to look more like 'Task' status indicator or just hidden */}
-                                    <CreditCard className="w-6 h-6" />
+                                <div className="mt-2 text-muted-foreground bg-transparent">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className={cn(
+                                            "h-6 w-6 rounded-full border-2 p-0 transition-all",
+                                            isCompleted
+                                                ? "bg-green-500 border-green-500 text-white hover:bg-green-600 hover:border-green-600"
+                                                : "border-muted-foreground/30 hover:bg-green-500/10 hover:border-green-500 hover:text-green-600 text-transparent"
+                                        )}
+                                        onClick={handleToggleComplete}
+                                    >
+                                        <Check className={cn("w-3 h-3 font-bold", isCompleted ? "opacity-100" : "opacity-0 hover:opacity-100")} />
+                                    </Button>
                                 </div>
 
                                 <div className="flex-1 space-y-1">
@@ -330,7 +410,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                         onChange={(e) => setTitle(e.target.value)}
                                         onBlur={handleSave} // Save title on blur
                                         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
-                                        className="text-xl md:text-2xl font-bold border-transparent px-2 h-auto rounded-md focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-transparent bg-transparent hover:bg-black/5 dark:hover:bg-white/5 transition-colors -ml-2 w-full"
+                                        className="text-xl md:text-2xl font-bold border-none shadow-none px-2 h-auto rounded-md focus-visible:ring-0 focus-visible:ring-offset-0 !bg-transparent dark:!bg-transparent hover:bg-transparent transition-colors -ml-2 w-full text-foreground"
                                         placeholder="Título da tarefa"
                                     />
                                     {/* Removed 'na coluna' text as it is now in Header */}
@@ -576,8 +656,8 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
                         </div>
 
-                        {/* Right Column: Activity & Comments (30%) */}
-                        <div className="md:col-span-4 space-y-6 pt-2 border-l pl-6 md:border-l-2 md:border-dashed md:border-slate-200 dark:md:border-slate-800">
+                        {/* Right Column: Activity & Comments (Fixed width on desktop, full on mobile) */}
+                        <div className="w-full md:w-[350px] lg:w-[400px] border-t md:border-t-0 md:border-l border-border/50 bg-muted/30 p-6 md:p-8 space-y-6">
 
                             {/* Activity Header */}
                             <div className="flex items-center justify-between">

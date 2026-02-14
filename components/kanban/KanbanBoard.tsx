@@ -44,6 +44,8 @@ import { KanbanPageOptions } from './KanbanPageOptions'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useHeaderActions } from '@/contexts/HeaderActionsContext'
+import KanbanColumnHeader from './KanbanColumnHeader'
+import { updateColumnName } from '@/actions/kanban'
 
 // --- Internal Components for Sortable ---
 
@@ -112,14 +114,16 @@ function SortableColumn({
   organizationId,
   onAddCard,
   activeTimer,
-  onTimerUpdate
+  onTimerUpdate,
+  onRename
 }: {
   column: KanbanColumn,
   cards: any[],
   organizationId: string,
   onAddCard: (colId: string) => void,
   activeTimer: TimeEntry | null,
-  onTimerUpdate: (t: TimeEntry | null) => void
+  onTimerUpdate: (t: TimeEntry | null) => void,
+  onRename: (columnId: string, newName: string) => Promise<void>
 }) {
   const {
     attributes,
@@ -183,14 +187,15 @@ function SortableColumn({
           <div className="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-violet-500 to-fuchsia-500" />
         )}
 
-        <h3 className="font-semibold text-sm flex items-center gap-2">
-          {column.organization_id === null && <Globe className="h-3.5 w-3.5 text-violet-500" />}
-          {column.name}
-          {column.organization_id === null && (
-            <span className="text-[9px] border border-violet-100 text-violet-600 px-1.5 py-0 rounded-full font-bold uppercase tracking-wider">Global</span>
-          )}
-          <span className="text-xs text-muted-foreground font-normal ml-auto">{columnCards.length}</span>
-        </h3>
+        <div className="flex items-center gap-2 flex-1 min-w-0 pr-2">
+          <KanbanColumnHeader
+            column={column}
+            organizationId={organizationId}
+            onRename={onRename}
+          />
+        </div>
+
+        <span className="text-xs text-muted-foreground font-normal ml-auto flex-shrink-0">{columnCards.length}</span>
       </div>
 
       {/* Cards List */}
@@ -544,6 +549,24 @@ export default function KanbanBoard({
     setIsModalOpen(true)
   }
 
+  const handleRenameColumn = async (columnId: string, newName: string) => {
+    // 1. Optimistic Update
+    setColumns(prev => prev.map(c =>
+      c.id === columnId ? { ...c, name: newName } : c
+    ))
+
+    // 2. Server Action
+    try {
+      await updateColumnName(columnId, newName)
+      toast.success('Coluna renomeada')
+    } catch (error) {
+      console.error('Failed to rename column:', error)
+      toast.error('Erro ao renomear coluna')
+      // Revert is handled by router.refresh or we could revert manualy here if we kept previous state
+      setColumns(initialColumns)
+    }
+  }
+
   return (
     <div className={cn("flex flex-col h-full w-full overflow-hidden transition-all duration-500 ease-in-out", currentPreset.className)}>
       {/* Board Header - Removed, moved to Header via useHeaderActions */}
@@ -566,6 +589,7 @@ export default function KanbanBoard({
                 onAddCard={handleAddCard}
                 activeTimer={activeTimer}
                 onTimerUpdate={setActiveTimer}
+                onRename={handleRenameColumn}
               />
             ))}
           </SortableContext>
