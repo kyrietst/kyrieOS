@@ -246,12 +246,12 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                         )}
 
                         <CardContent className={cn(
-                            "p-3 space-y-3 relative z-10 w-full",
-                            isHeaderCover ? "pt-2" : "pt-3",
-                            isFullCover && "min-h-[140px] flex flex-col justify-end p-2 pb-2.5"
+                            "px-2 py-1 relative z-10 w-full flex flex-col gap-1",
+                            isHeaderCover ? "pt-1" : "pt-1.5",
+                            isFullCover && "justify-end pb-1"
                         )}>
                             {/* Header: Title */}
-                            <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start justify-between gap-1">
                                 {isEditingTitle ? (
                                     <div className="w-full" onClick={(e) => e.stopPropagation()}>
                                         <Textarea
@@ -268,14 +268,14 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                                     setEditedTitle(card.title);
                                                 }
                                             }}
-                                            className="min-h-[60px] p-2 text-sm font-medium leading-tight resize-none focus-visible:ring-1"
+                                            className="min-h-[40px] p-1 text-sm font-medium leading-tight resize-none focus-visible:ring-1"
                                             autoFocus
                                             disabled={isUpdatingTitle}
                                         />
                                     </div>
                                 ) : (
                                     <div className={cn(
-                                        "font-bold text-[13px] leading-snug break-words flex-1 pr-6 flex items-center gap-1.5",
+                                        "font-bold text-[12px] leading-[1.2] break-words flex-1 pr-4 flex items-center gap-1",
                                         isFullCover
                                             ? (textTheme === 'light' ? "text-white" : "text-zinc-900")
                                             : "text-foreground"
@@ -293,11 +293,11 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                                 disabled={isToggling}
                                             >
                                                 {isToggling ? (
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
                                                 ) : card.completed_at ? (
-                                                    <CheckCircle2 className="h-4 w-4" />
+                                                    <CheckCircle2 className="h-3 w-3" />
                                                 ) : (
-                                                    <Circle className="h-4 w-4 stroke-[2.5px]" />
+                                                    <Circle className="h-3 w-3 stroke-[2.5px]" />
                                                 )}
                                             </motion.button>
                                         )}
@@ -310,56 +310,49 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                 )}
                             </div>
 
-                            {/* Metadata Row */}
-                            <div className="flex items-center justify-between pt-1">
+                            {/* Metadata Row (Conditional to avoid gap-1 when empty) */}
+                            {(() => {
+                                const labels = Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object'
+                                    ? card.labels
+                                    : (card.kanban_card_labels?.map((cl: any) => cl.kanban_labels) || []);
 
-                                {/* Left: ICE / Labels */}
-                                <div className="flex gap-1.5 flex-wrap items-center">
-                                    {/* Assignee Avatar */}
-                                    {card.assigned_to_user && (
-                                        <AvatarStack size={22}>
-                                            <Avatar className="border-2 border-background">
-                                                <AvatarImage src={card.assigned_to_user.avatar_url || undefined} />
-                                                <AvatarFallback className="text-[8px]">
-                                                    {(card.assigned_to_user.full_name || 'U').substring(0, 2).toUpperCase()}
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        </AvatarStack>
-                                    )}
+                                const hasLabels = labels.length > 0;
+                                const hasAssignee = !!card.assigned_to_user;
+                                const hasTimer = isTimerActive && activeTimer;
 
-                                    {/* Unified Label Rendering for Master (JSONB) and Client (Joined) */}
-                                    {(() => {
-                                        if (Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object') {
-                                            return card.labels.map((l: any, i: number) => (
+                                if (!hasLabels && !hasAssignee && !hasTimer) return null;
+
+                                return (
+                                    <div className="flex items-center justify-between pb-0.5">
+                                        <div className="flex gap-1 flex-wrap items-center">
+                                            {/* Assignee Avatar */}
+                                            {hasAssignee && (
+                                                <AvatarStack size={18}>
+                                                    <Avatar className="border-1.5 border-background">
+                                                        <AvatarImage src={card.assigned_to_user.avatar_url || undefined} />
+                                                        <AvatarFallback className="text-[6px]">
+                                                            {(card.assigned_to_user.full_name || 'U').substring(0, 2).toUpperCase()}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                </AvatarStack>
+                                            )}
+
+                                            {/* Labels */}
+                                            {labels.map((l: any, i: number) => (
                                                 <span
                                                     key={i}
                                                     className={cn(
-                                                        "text-[9px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm mb-0.5",
+                                                        "text-[8px] px-1.5 py-0 rounded-full text-white font-bold shadow-sm",
                                                         isFullCover ? "bg-white/20 backdrop-blur-sm" : (l.color || 'bg-gray-500')
                                                     )}
                                                 >
                                                     {l.name}
                                                 </span>
-                                            ));
-                                        }
-
-                                        if (card.kanban_card_labels?.length) {
-                                            return card.kanban_card_labels.map((cl: any) => (
-                                                <span
-                                                    key={cl.kanban_labels.id}
-                                                    className={cn(
-                                                        "text-[9px] px-2 py-0.5 rounded-full text-white font-bold shadow-sm mb-0.5",
-                                                        isFullCover ? "bg-white/20 backdrop-blur-sm" : cl.kanban_labels.color
-                                                    )}
-                                                >
-                                                    {cl.kanban_labels.name}
-                                                </span>
-                                            ));
-                                        }
-                                        return null;
-                                    })()}
-                                </div>
-                            </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </CardContent>
                     </Card>
                 </motion.div>

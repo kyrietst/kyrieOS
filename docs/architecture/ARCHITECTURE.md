@@ -35,6 +35,8 @@ graph TD
 - **Estilização:** Tailwind CSS v4 + Shadcn/ui
 - **Ultimate Kanban:** A standardized infrastructure with 12 global columns, automatically synced to all client organizations via database triggers.
 - **Organization Management:** Hierarchical data access with specific views for Master (Global) and Client (Local) contexts.
+- **Reatividade Real-time:** Sistema de atualização em tempo real utilizando React Prop Sync e Supabase Realtime listeners (`router.refresh`).
+- **Animações & Feedback:** Framer Motion para transições de board e Canvas Confetti para celebração de conclusões.
 
 ### 2. Backend (The Brain)
 

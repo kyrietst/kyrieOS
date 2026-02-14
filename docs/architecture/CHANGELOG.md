@@ -17,8 +17,20 @@ All notable changes to the Kyrie OS project will be documented in this file.
 
 ## [1.4.0] - 2026-02-12
 ### Added
-- **Card-based Time Tracking:** New dedicated time tracking system tied to Kanban cards.
-- **Global Control Dock:** Floating dock to manage active timers from any screen.
+- **Card-based Time Tracking:** New dedicated time tracking system tied- Master Kanban: Nova infraestrutura Ultimate com 12 colunas globais.
+- Card Details: Novo modal de alta fidelidade (Trello-style).
+
+## [1.2.5] - 2026-02-12
+### Adicionado
+- High-Fidelity Kanban Covers: Seleção de cores e imagens de banners.
+- UI Cleanup: Remoção de botões redundantes e limpeza estética.
+
+## [1.3.0] - 2026-02-13
+### Adicionado
+- **Real-time Sync**: Sincronização automática via Supabase Realtime e Root Revalidation.
+- **Advanced Covers (Large mode)**: Título alinhado ao fundo com hover indicators.
+- **Text Theme Toggle**: Suporte para texto claro/escuro em capas.
+- **Documentação Pro Max**: Atualização de guias técnicos e criação do UI Style Guide.
 - **Visual Cues:** Active cards now glow red and show a "Stop" button.
 - **Database:** New `kanban_time_entries` table with strict consistency rules.
 

@@ -1,7 +1,7 @@
 # 📋 Feature Documentation: Master Kanban & Card Details
 
-**Versão:** 1.2 (High-Fidelity)
-**Data:** 01 de Fevereiro de 2026
+**Versão:** 1.3 (High-Fidelity & Real-time)
+**Data:** 13 de Fevereiro de 2026
 **Status:** Implementado ✅
 
 ---
@@ -45,6 +45,18 @@ Uma barra superior dedicada para controles de janela e navegação:
     - **Mais (...):** Menu com opções de Mover, Copiar, Arquivar.
     - **Fechar (X):** Encerra o modal.
 
+### 3.4 Sistema de Capas Premium (Trello-Style)
+Refinamos o sistema de capas para máxima fidelidade visual:
+- **Modos de Visualização:**
+    - **Banner (Header):** A imagem ou cor ocupa o topo do cartão.
+    - **Capa (Full):** O cartão inteiro é preenchido pela cor ou imagem, com o título posicionado no canto inferior esquerdo.
+- **Seletor Inteligente:**
+    - Botões de seleção agora mostram **Card Skeletons** para pré-visualização realística.
+    - Suporte para cores sólidas e imagens de anexos.
+- **Contraste de Texto:**
+    - Opções **Claro** e **Escuro** para o título, garantindo legibilidade sobre qualquer fundo.
+    - Indicador de seleção (círculo) que aparece no hover, respeitando o tema de cor escolhido.
+
 ### 3.2 Conteúdo Rico
 - **Título Editável:** Input grande e clean, editável in-place.
 - **Barra de Ações:** Botões rápidos para adicionar Membros, Etiquetas, Checklist, Datas, Anexos.
@@ -57,6 +69,15 @@ Uma barra superior dedicada para controles de janela e navegação:
 - **Sidebar Direita:** Área dedicada para histórico e comunicação.
 - **Timeline:** Registra quem moveu, editou ou comentou.
 - **Input de Comentário:** Campo de texto para interação da equipe.
+
+---
+
+## 4. Reatividade em Tempo Real (Sync)
+
+Implementamos um motor de sincronização para eliminar a necessidade de refresh (F5):
+- **Prop-State Synchronization**: Componentes de board sincronizam o estado React com as props do servidor instantaneamente após mutações.
+- **Supabase Realtime**: O board escuta mudanças na tabela `kanban_cards`. Mudanças feitas por outros usuários ou abas são refletidas automaticamente via `router.refresh`.
+- **Feedback Instantâneo**: Atualizações de capa, títulos e posições são refletidas em milissegundos.
 
 ---
 
@@ -82,7 +103,7 @@ Uma barra superior dedicada para controles de janela e navegação:
 
 ---
 
-## 6. Próximos Passos
+- [x] Refinar modo "Capa" (Full) com título e hover indicators.
+- [x] Implementar sincronização real-time com Supabase.
 - [ ] Implementar upload real de anexos (Supabase Storage).
 - [ ] Persistir comentários no banco de dados (`task_comments`).
-- [ ] Tornar o checklist funcional (atualmente visual).
