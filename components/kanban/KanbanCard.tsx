@@ -345,17 +345,43 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                             )}
 
                                             {/* Labels */}
-                                            {labels.map((l: any, i: number) => (
-                                                <span
-                                                    key={i}
-                                                    className={cn(
-                                                        "text-[8px] px-1.5 py-0 rounded-full text-white font-bold shadow-sm",
-                                                        isFullCover ? "bg-white/20 backdrop-blur-sm" : (l.color || 'bg-gray-500')
-                                                    )}
-                                                >
-                                                    {l.name}
-                                                </span>
-                                            ))}
+                                            {/* Labels */}
+                                            {labels.map((l: any, i: number) => {
+                                                const colorMap: Record<string, string> = {
+                                                    'bg-red-500': 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20',
+                                                    'bg-blue-500': 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/20',
+                                                    'bg-green-500': 'bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/20',
+                                                    'bg-yellow-500': 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 border-yellow-500/20',
+                                                    'bg-purple-500': 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/20',
+                                                    'bg-orange-500': 'bg-orange-500/15 text-orange-700 dark:text-orange-400 border-orange-500/20',
+                                                    'bg-gray-500': 'bg-gray-500/15 text-gray-700 dark:text-gray-400 border-gray-500/20',
+                                                    'bg-pink-500': 'bg-pink-500/15 text-pink-700 dark:text-pink-400 border-pink-500/20',
+                                                }
+                                                const colorClass = colorMap[l.color]
+                                                const isHex = l.color?.startsWith('#')
+
+                                                return (
+                                                    <span
+                                                        key={i}
+                                                        className={cn(
+                                                            "text-[10px] px-1.5 py-0.5 rounded-sm font-semibold transition-all border",
+                                                            isFullCover
+                                                                ? "bg-white/20 backdrop-blur-sm text-white border-white/20 border-transparent"
+                                                                : (colorClass || "border-transparent")
+                                                        )}
+                                                        style={!isFullCover && isHex ? {
+                                                            backgroundColor: l.color + '25',
+                                                            color: l.color,
+                                                            borderColor: l.color + '30'
+                                                        } : (!isFullCover && !colorClass ? {
+                                                            backgroundColor: 'rgba(100,100,100,0.15)',
+                                                            color: 'inherit'
+                                                        } : {})}
+                                                    >
+                                                        {l.name}
+                                                    </span>
+                                                )
+                                            })}
                                         </div>
                                     </div>
                                 );

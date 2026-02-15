@@ -70,6 +70,9 @@ import {
     AvatarFallback
 } from '@/components/ui/avatar'
 import { Clock, Play, Square, History } from 'lucide-react'
+import { CardActionButton } from './CardActionButton'
+import { MemberPicker } from './MemberPicker'
+import { getCardMembers } from '@/actions/kanban'
 
 interface KanbanCardDetailsProps {
     isOpen: boolean
@@ -117,6 +120,9 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     const [isDueDateOpen, setIsDueDateOpen] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
+    // Member State
+    const [memberIds, setMemberIds] = useState<string[]>([])
+
     // Active section state (for action buttons)
     const [activeSection, setActiveSection] = useState<string | null>(null)
 
@@ -144,14 +150,16 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     const refreshData = useCallback(async () => {
         if (!card.id) return
         try {
-            const [checklistData, commentData, attachmentData] = await Promise.all([
+            const [checklistData, commentData, attachmentData, memberData] = await Promise.all([
                 getCardChecklists(card.id),
                 getCardComments(card.id),
-                getCardAttachments(card.id)
+                getCardAttachments(card.id),
+                getCardMembers(card.id)
             ])
             setChecklists(checklistData)
             setComments(commentData)
             setCardAttachments(attachmentData)
+            setMemberIds(memberData?.map((m: any) => m.user_id) || [])
         } catch (e) {
             console.error('Failed to fetch card data:', e)
         }
@@ -526,14 +534,22 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
                             {/* Action Buttons Bar */}
                             <div className="pl-10 flex flex-wrap gap-2">
-                                <ActionButton icon={User} label="Membros" />
+                                <MemberPicker
+                                    cardId={card.id}
+                                    organizationId={card.organization_id}
+                                    selectedMemberIds={memberIds}
+                                    onMembersChange={setMemberIds}
+                                    trigger={
+                                        <CardActionButton icon={User} label="Membros" />
+                                    }
+                                />
                                 <LabelPicker
                                     cardId={card.id}
                                     organizationId={card.organization_id}
                                     selectedLabelIds={labelIds}
                                     onLabelsChange={setLabelIds}
                                 />
-                                <ActionButton
+                                <CardActionButton
                                     icon={CheckSquare}
                                     label="Checklist"
                                     onClick={() => setActiveSection(activeSection === 'checklist' ? null : 'checklist')}
@@ -542,12 +558,12 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                 <Popover open={isDueDateOpen} onOpenChange={setIsDueDateOpen}>
                                     <PopoverTrigger asChild>
                                         <div>
-                                            <ActionButton
+                                            <CardActionButton
                                                 icon={Calendar}
                                                 label={dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : "Datas"}
                                                 onClick={() => setIsDueDateOpen(true)}
                                                 active={!!dueDate}
-                                                variant={isOverdue ? 'destructive' : isDueSoon ? 'warning' : undefined}
+                                                variantTheme={isOverdue ? 'destructive' : isDueSoon ? 'warning' : undefined}
                                             />
                                         </div>
                                     </PopoverTrigger>
@@ -573,7 +589,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                         </div>
                                     </PopoverContent>
                                 </Popover>
-                                <ActionButton
+                                <CardActionButton
                                     icon={Paperclip}
                                     label={`Anexo${cardAttachments.length > 0 ? ` (${cardAttachments.length})` : ''}`}
                                     onClick={() => fileInputRef.current?.click()}
@@ -951,33 +967,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     )
 }
 
-function ActionButton({ icon: Icon, label, onClick, active, isLoading, variant }: {
-    icon: any
-    label: string
-    onClick?: () => void
-    active?: boolean
-    isLoading?: boolean
-    variant?: 'destructive' | 'warning'
-}) {
-    return (
-        <Button
-            variant="secondary"
-            size="sm"
-            onClick={onClick}
-            className={cn(
-                "h-8 px-3 text-xs font-medium border border-transparent transition-all shadow-sm",
-                active
-                    ? "bg-primary/10 dark:bg-primary/20 text-primary border-primary/30 hover:bg-primary/20"
-                    : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600",
-                variant === 'destructive' && "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900",
-                variant === 'warning' && "bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900"
-            )}
-        >
-            {isLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Icon className="w-3.5 h-3.5 mr-1.5" />}
-            {label}
-        </Button>
-    )
-}
 
 function ToolbarButton({ icon: Icon }: { icon: any }) {
     return (

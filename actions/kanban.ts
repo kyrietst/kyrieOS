@@ -788,3 +788,94 @@ export async function updateCardDueDate(cardId: string, dueDate: string | null) 
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   revalidatePath('/kyrie/workspace/kanban')
 }
+
+// ==================== MEMBER ACTIONS ====================
+
+export async function getCardMembers(cardId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('kanban_card_members')
+    .select(`
+      user_id,
+      profiles:user_id (
+        id,
+        full_name,
+        avatar_url,
+        email
+      )
+    `)
+    .eq('card_id', cardId)
+
+  if (error) {
+    console.error('Error in getCardMembers:', error)
+    return []
+  }
+  return data.map((item: any) => item.profiles)
+}
+
+export async function addCardMember(cardId: string, userId: string, organizationId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_card_members')
+    .insert({ card_id: cardId, user_id: userId })
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+}
+
+export async function removeCardMember(cardId: string, userId: string, organizationId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_card_members')
+    .delete()
+    .eq('card_id', cardId)
+    .eq('user_id', userId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+}
+
+export async function getWorkspaceMembers(organizationId: string) {
+  const supabase = await createClient()
+
+  // Fetch profiles belonging to the organization OR are KYRIE_ADMIN
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url, email, role')
+    .or(`organization_id.eq.${organizationId},role.eq.KYRIE_ADMIN`)
+    .order('full_name')
+
+  if (error) {
+    console.error('Error fetching workspace members:', error)
+    return []
+  }
+
+  return data
+}
+
+export async function updateCardDates(
+  cardId: string,
+  dates: { startDate?: string | null, dueDate?: string | null, reminder?: string | null }
+) {
+  const supabase = await createClient()
+
+  const updates: any = {}
+  if (dates.startDate !== undefined) updates.start_date = dates.startDate
+  if (dates.dueDate !== undefined) updates.due_date = dates.dueDate
+  if (dates.reminder !== undefined) updates.reminder_at = dates.reminder
+
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update(updates)
+    .eq('id', cardId)
+
+  if (error) {
+    console.error('Error in updateCardDates:', error)
+    throw new Error('Failed to update card dates')
+  }
+
+  revalidatePath('/dashboard/kanban')
+  return { success: true }
+}

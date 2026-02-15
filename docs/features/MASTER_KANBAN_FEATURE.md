@@ -75,6 +75,12 @@ O modal de detalhes foi transformado em uma experiência "Notion-like/Trello-lik
 - **Modo Banner**: Imagem apenas no topo.
 - **Temas de Texto**: Opção de texto Claro/Escuro para garantir contraste em capas personalizadas.
 
+### 4.4 Gerenciador de Etiquetas (Novo)
+- **LabelPicker**: Componente dedicado para gestão de tags com UX refinada.
+- **Funcionalidades**: Busca em tempo real, Criação Rápida e Toggle Instantâneo.
+- **Estilo**: Glassy Pro Max (fundo translúcido com cores mapeadas do banco).
+- **Documentação Técnica**: Veja [KANBAN_LABEL_MANAGER.md](./KANBAN_LABEL_MANAGER.md).
+
 ---
 
 ## 5. Arquitetura Técnica

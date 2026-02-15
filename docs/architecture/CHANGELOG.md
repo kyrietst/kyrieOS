@@ -4,6 +4,14 @@ All notable changes to the Kyrie OS project will be documented in this file.
 
 ## [Unreleased]
 
+### [1.9.0] - 2026-02-14
+### Added
+- **Kanban Label Manager:** Complete replacement of static tags with interactive LabelPicker.
+  - **Features:** Real-time search, quick creation, glassy UI.
+  - **Component:** `LabelPicker.tsx` refactored for "Pro Max" standards.
+- **Label Styling:** Implemented "Glassy Pro Max" visual style for labels (translucent backgrounds, mapped colors).
+- **Documentation:** Added `KANBAN_LABEL_MANAGER.md` and updated `MASTER_KANBAN_FEATURE.md`.
+
 ### [1.8.0] - 2026-02-14
 ### Added
 - **Pin Card Feature:** Users can pin cards to the top of their column for visual priority.
