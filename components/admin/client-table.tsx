@@ -54,30 +54,30 @@ export const columns: ColumnDef<Client>[] = [
     accessorKey: "name",
     header: "Cliente",
     cell: ({ row }) => (
-        <div className="flex items-center gap-3">
-            <Avatar className="h-8 w-8">
-                <AvatarImage src={row.original.avatar} />
-                <AvatarFallback>{row.original.name.substring(0,2).toUpperCase()}</AvatarFallback>
-            </Avatar>
-            <div className="flex flex-col">
-                <span className="font-medium">{row.getValue("name")}</span>
-                <span className="text-xs text-muted-foreground">{row.original.email}</span>
-            </div>
+      <div className="flex items-center gap-3">
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={row.original.avatar} />
+          <AvatarFallback>{row.original.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col">
+          <span className="font-medium">{row.getValue("name")}</span>
+          <span className="text-xs text-muted-foreground">{row.original.email}</span>
         </div>
+      </div>
     ),
   },
   {
     accessorKey: "status",
     header: "Status",
     cell: ({ row }) => {
-        const val = row.getValue("status") as string;
-        // Map any string to the 3 main statuses for badge variants
-        const status = val === 'ACTIVE_HEALTHY' ? 'active' : val === 'INACTIVE' ? 'inactive' : 'pending';
-        return (
-            <Badge variant={status === 'active' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'} className="capitalize">
-                {status}
-            </Badge>
-        )
+      const val = row.getValue("status") as string;
+      // Map any string to the 3 main statuses for badge variants
+      const status = val === 'ACTIVE_HEALTHY' ? 'active' : val === 'INACTIVE' ? 'inactive' : 'pending';
+      return (
+        <Badge variant={status === 'active' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'} className="capitalize">
+          {status}
+        </Badge>
+      )
     },
   },
   // ... (Other columns can remain similar or be mapped from real data)
@@ -86,18 +86,18 @@ export const columns: ColumnDef<Client>[] = [
     header: "Plano",
     cell: ({ row }) => <div className="font-medium">{row.getValue("plan") || "N/A"}</div>,
   },
-   {
+  {
     accessorKey: "roi",
     header: ({ column }) => {
-        return (
-          <Button
-            variant="ghost"
-            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            ROI
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
-        )
+      return (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          ROI
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
+      )
     },
     cell: ({ row }) => <div className="font-bold text-center text-emerald-500">{row.getValue("roi") || "-"}</div>,
   },
@@ -124,8 +124,8 @@ export const columns: ColumnDef<Client>[] = [
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="text-purple-400 font-medium">
-                <ExternalLink className="mr-2 h-4 w-4" />
-                Ver como Cliente
+              <ExternalLink className="mr-2 h-4 w-4" />
+              Ver como Cliente
             </DropdownMenuItem>
             <DropdownMenuItem>Ver Detalhes</DropdownMenuItem>
             <DropdownMenuItem className="text-destructive">Suspender Conta</DropdownMenuItem>
@@ -144,27 +144,34 @@ export function ClientTable() {
   )
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
-  
+
   const supabase = createClient();
 
   React.useEffect(() => {
-      async function loadClients() {
-          const { data: orgs, error } = await supabase.from('organizations').select('*');
-          if (orgs) {
-              const mappedClients: Client[] = orgs.map(org => ({
-                  id: org.id,
-                  name: org.name,
-                  email: "contact@" + org.slug + ".com", // Mock email for now or fetch from profiles
-                  status: org.status || "active", // Assuming status exists or default
-                  plan: "Growth", // Mock or metadata
-                  roi: "4.2x", // Mock
-                  lastActive: new Date(org.created_at).toLocaleDateString(),
-                  avatar: org.logo_url
-              }));
-              setData(mappedClients);
-          }
+    async function loadClients() {
+      const { data: orgs, error } = await supabase.from('organizations').select('*');
+      if (orgs) {
+        const toStatus = (s: string | null | undefined): Client['status'] => {
+          if (s === 'active' || s === 'ACTIVE_HEALTHY') return 'active'
+          if (s === 'inactive' || s === 'INACTIVE') return 'inactive'
+          if (s === 'pending') return 'pending'
+          return 'active'
+        }
+
+        const mappedClients: Client[] = orgs.map(org => ({
+          id: org.id,
+          name: org.name,
+          email: "contact@" + org.slug + ".com",
+          status: toStatus(org.status),
+          plan: "Growth" as const,
+          roi: "4.2x",
+          lastActive: new Date(org.created_at).toLocaleDateString(),
+          avatar: org.logo_url ?? undefined
+        }));
+        setData(mappedClients);
       }
-      loadClients();
+    }
+    loadClients();
   }, [])
 
   const table = useReactTable({
@@ -235,9 +242,9 @@ export function ClientTable() {
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
                     </TableHead>
                   )
                 })}
