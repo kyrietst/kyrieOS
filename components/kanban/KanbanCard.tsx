@@ -1,6 +1,6 @@
 'use client'
 
-import { Pencil, CheckCircle2, Circle, Loader2, Play } from 'lucide-react'
+import { Pencil, CheckCircle2, Circle, Loader2, Play, Pin } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -34,9 +34,10 @@ interface KanbanCardProps {
     hideActions?: boolean
     activeTimer?: TimeEntry | null
     onTimerUpdate?: (t: TimeEntry | null) => void
+    onPinToggle?: (cardId: string, isPinned: boolean) => void
 }
 
-export default function KanbanCard({ card, onClick, isMasterView, hideActions = false, activeTimer, onTimerUpdate }: KanbanCardProps) {
+export default function KanbanCard({ card, onClick, isMasterView, hideActions = false, activeTimer, onTimerUpdate, onPinToggle }: KanbanCardProps) {
     const [isToggling, setIsToggling] = useState(false)
     const [showDetails, setShowDetails] = useState(false)
     const [isLoadingTimer, setIsLoadingTimer] = useState(false)
@@ -180,7 +181,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
 
     return (
         <>
-            <KanbanCardMenu card={card} onOpen={() => setShowDetails(true)}>
+            <KanbanCardMenu card={card} onOpen={() => setShowDetails(true)} onPinToggle={onPinToggle}>
                 <motion.div
                     layout
                     initial={{ opacity: 0, scale: 1 }}
@@ -305,6 +306,9 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                             </motion.button>
                                         )}
                                         <span className={cn(isFullCover && "font-semibold")}>{card.title}</span>
+                                        {card.is_pinned && (
+                                            <Pin className="h-3 w-3 text-sky-500 fill-sky-500/20 rotate-45 shrink-0 ml-1" />
+                                        )}
                                     </div>
                                 )}
                                 {/* Timer Status */}

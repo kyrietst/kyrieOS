@@ -19,15 +19,18 @@ import {
     Palette,
     Users,
     Tag,
+    Pin,
+    PinOff,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { duplicateCard, archiveCard, updateCardColor } from '@/actions/kanban'
+import { duplicateCard, archiveCard, updateCardColor, toggleCardPin } from '@/actions/kanban'
 import { useState } from 'react'
 
 interface KanbanCardMenuProps {
     card: any
     onOpen: () => void // Left click action (passed from parent)
     children?: React.ReactNode
+    onPinToggle?: (cardId: string, isPinned: boolean) => void
 }
 
 const COLORS = [
@@ -39,7 +42,7 @@ const COLORS = [
     { name: 'Sem capa', value: null },
 ]
 
-export function KanbanCardMenu({ card, onOpen, children }: KanbanCardMenuProps) {
+export function KanbanCardMenu({ card, onOpen, children, onPinToggle }: KanbanCardMenuProps) {
     const [loading, setLoading] = useState(false)
 
     const handleDuplicate = async () => {
@@ -76,6 +79,21 @@ export function KanbanCardMenu({ card, onOpen, children }: KanbanCardMenuProps) 
         }
     }
 
+    const handleTogglePin = async () => {
+        const newPinnedState = !card.is_pinned
+        const validId = card.id || card.card_id
+        // Optimistic update FIRST (instant reorder with animation)
+        onPinToggle?.(validId, newPinnedState)
+        try {
+            await toggleCardPin(validId, newPinnedState)
+            toast.success(newPinnedState ? 'Cartão fixado' : 'Cartão desafixado')
+        } catch (e) {
+            // Revert on failure
+            onPinToggle?.(validId, !newPinnedState)
+            toast.error('Erro ao alterar fixação')
+        }
+    }
+
     const handleCopyLink = () => {
         const url = `${window.location.origin}/kyrie/card/${card.id}` // Adjust global route if needed
         navigator.clipboard.writeText(url)
@@ -96,6 +114,36 @@ export function KanbanCardMenu({ card, onOpen, children }: KanbanCardMenuProps) 
                 <ContextMenuItem onClick={onOpen}>
                     <Maximize2 className="mr-2 h-4 w-4" />
                     Abrir Cartão / Detalhes
+                </ContextMenuItem>
+
+                <ContextMenuItem onClick={handleTogglePin}>
+                    {card.is_pinned ? (
+                        <>
+                            <PinOff className="mr-2 h-4 w-4" />
+                            Desafixar
+                        </>
+                    ) : (
+                        <>
+                            <Pin className="mr-2 h-4 w-4" />
+                            Fixar no Topo
+                        </>
+                    )}
+                </ContextMenuItem>
+
+                <ContextMenuSeparator />
+
+                <ContextMenuItem onClick={handleTogglePin}>
+                    {card.is_pinned ? (
+                        <>
+                            <PinOff className="mr-2 h-4 w-4" />
+                            Desafixar
+                        </>
+                    ) : (
+                        <>
+                            <Pin className="mr-2 h-4 w-4" />
+                            Fixar no Topo
+                        </>
+                    )}
                 </ContextMenuItem>
 
                 <ContextMenuSeparator />

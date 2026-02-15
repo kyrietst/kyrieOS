@@ -51,12 +51,13 @@ import { updateColumnName } from '@/actions/kanban'
 
 // --- Internal Components for Sortable ---
 
-function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdate }: {
+function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdate, onPinToggle }: {
   card: any,
   organizationId: string,
   onClick: () => void,
   activeTimer: TimeEntry | null,
-  onTimerUpdate: (t: TimeEntry | null) => void
+  onTimerUpdate: (t: TimeEntry | null) => void,
+  onPinToggle?: (cardId: string, isPinned: boolean) => void
 }) {
   const {
     attributes,
@@ -102,6 +103,7 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
         isMasterView={isMaster}
         activeTimer={activeTimer}
         onTimerUpdate={onTimerUpdate}
+        onPinToggle={onPinToggle}
       />
     </motion.div>
   )
@@ -115,7 +117,8 @@ function SortableColumn({
   onAddCard,
   activeTimer,
   onTimerUpdate,
-  onRename
+  onRename,
+  onPinToggle
 }: {
   column: KanbanColumn,
   cards: any[],
@@ -123,7 +126,8 @@ function SortableColumn({
   onAddCard: (colId: string) => void,
   activeTimer: TimeEntry | null,
   onTimerUpdate: (t: TimeEntry | null) => void,
-  onRename: (columnId: string, newName: string) => Promise<void>
+  onRename: (columnId: string, newName: string) => Promise<void>,
+  onPinToggle?: (cardId: string, isPinned: boolean) => void
 }) {
   const {
     attributes,
@@ -149,7 +153,7 @@ function SortableColumn({
   const isMaster = organizationId === 'master'
 
   // Filter cards for this column
-  const columnCards = cards.filter(c => {
+  const filteredCards = cards.filter(c => {
     if (isMaster) {
       let colStatus = column.status;
       if (!colStatus) {
@@ -160,6 +164,13 @@ function SortableColumn({
       return c.master_status === colStatus;
     }
     return c.column_id === column.id
+  })
+
+  // Sort: pinned cards first, then by updated_at
+  const columnCards = [...filteredCards].sort((a, b) => {
+    if (a.is_pinned && !b.is_pinned) return -1
+    if (!a.is_pinned && b.is_pinned) return 1
+    return 0
   })
 
   const cardIds = columnCards.map(c => c.id || c.card_id)
@@ -210,6 +221,7 @@ function SortableColumn({
                 onClick={() => onAddCard(column.id)}
                 activeTimer={activeTimer}
                 onTimerUpdate={onTimerUpdate}
+                onPinToggle={onPinToggle}
               />
             ))}
           </AnimatePresence>
@@ -549,6 +561,14 @@ export default function KanbanBoard({
     setIsModalOpen(true)
   }
 
+  const handlePinToggle = (cardId: string, isPinned: boolean) => {
+    setCards(prev => prev.map(c =>
+      (c.id || c.card_id) === cardId
+        ? { ...c, is_pinned: isPinned, pinned_at: isPinned ? new Date().toISOString() : null }
+        : c
+    ))
+  }
+
   const handleRenameColumn = async (columnId: string, newName: string) => {
     // 1. Optimistic Update
     setColumns(prev => prev.map(c =>
@@ -590,6 +610,7 @@ export default function KanbanBoard({
                 activeTimer={activeTimer}
                 onTimerUpdate={setActiveTimer}
                 onRename={handleRenameColumn}
+                onPinToggle={handlePinToggle}
               />
             ))}
           </SortableContext>

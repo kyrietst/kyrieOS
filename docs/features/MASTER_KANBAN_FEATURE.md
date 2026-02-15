@@ -1,6 +1,6 @@
 # 📋 Feature Documentation: Master Kanban & Card Details
 
-**Versão:** 2.0 (Ultimate Infrastructure & Glassmorphism)
+**Versão:** 3.0 (Pin, Covers & Optimistic Updates)
 **Data:** 14 de Fevereiro de 2026
 **Status:** Implementado ✅
 
@@ -84,7 +84,16 @@ O modal de detalhes foi transformado em uma experiência "Notion-like/Trello-lik
 - `KanbanCardDetails.tsx`: O modal complexo. Gerencia estado local de edição para performance otimista.
 - `CardCoverSelector.tsx`: Componente isolado para gestão de uploads e seleção de cores.
 
-### 5.2 Server Actions & Realtime
-- **Otimistic UI**: A interface atualiza instantaneamente (ex: arrastar card, trocar nome).
-- **Background Sync**: Server Actions (`moveCard`, `updateCardCover`) persistem os dados.
+### 5.2 Pin Card System
+- **Propósito**: Permite fixar cartões importantes no topo da coluna.
+- **Visual**: Ícone de Pin azul (rotacionado 45°) ao lado do título.
+- **Database**: `is_pinned` (BOOLEAN) + `pinned_at` (TIMESTAMPTZ) em `kanban_cards`.
+- **Sorting**: View e RPC ordenam `is_pinned DESC NULLS LAST` → `updated_at DESC`.
+- **Menu**: Ação "Fixar no Topo" / "Desafixar" no `KanbanCardMenu`.
+- **Optimistic**: Atualização local antes do server, com rollback automático em caso de erro.
+- **Animação**: `framer-motion` `layout` prop gera transição suave na reordenação.
+
+### 5.3 Server Actions & Realtime
+- **Otimistic UI**: A interface atualiza instantaneamente (ex: arrastar card, fixar/desafixar, trocar nome).
+- **Background Sync**: Server Actions (`moveCard`, `updateCardCover`, `toggleCardPin`) persistem os dados.
 - **Supabase Realtime**: Listeners escutam mudanças no banco para sincronizar multi-abas/multi-usuários sem refresh.

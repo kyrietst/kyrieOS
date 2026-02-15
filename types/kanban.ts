@@ -52,6 +52,9 @@ export interface KanbanCard {
     organization_name?: string;
     organization_slug?: string;
     organization_color?: string;
+    // Pinned Status
+    is_pinned?: boolean;
+    pinned_at?: string | null;
     // Relações
     kanban_columns?: {
         name: string;
@@ -116,6 +119,9 @@ export interface MasterKanbanCard {
     estimated_minutes?: number;
     remaining_load_minutes?: number;
     total_tracked_minutes?: number;
+    // Pinned Status
+    is_pinned?: boolean;
+    pinned_at?: string | null;
 }
 
 export interface MasterKanbanResponse {

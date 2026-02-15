@@ -1,132 +1,65 @@
-# Migrations do Banco de Dados
+# Database Migrations
 
-## Migration 001: Schema Inicial (Fundação)
+> **Last Updated:** 2026-02-14
 
-| Timestamp | Migration File | Description | Status |
-|-----------|----------------|-------------|--------|
-| 20260212 | `20260212_create_kanban_time_entries.sql` | Creates table for card-based timers with user uniqueness constraint. | Applied |
-| 20240129215000 | `20240129215000_create_time_entries.sql` | (Legacy) Original time entries table. | Applied |
+## Migration Registry
 
-Esta migration cria a estrutura base para organizações, usuários e tarefas.
+| Timestamp | File | Description | Status |
+|-----------|------|-------------|--------|
+| 20240129215000 | `create_time_entries.sql` | Legacy time entries table | Applied |
+| 20260130000000 | `prd_2_0_schema.sql` | PRD 2.0 base schema | Applied |
+| 20260130_002 | `create_tasks.sql` | Tasks table | Applied |
+| 20260130_003 | `create_reports.sql` | Reports table | Applied |
+| 20260130_004 | `create_business_metrics.sql` | Business metrics table | Applied |
+| 20260130_005 | `create_client_health.sql` | Client health table | Applied |
+| 20260130_006 | `create_activities.sql` | Activities table | Applied |
+| 20260130_007 | `seed_data.sql` | Initial seed data | Applied |
+| 20260130_008 | `update_organizations.sql` | Extended organizations fields | Applied |
+| 20260207 | `add_ice_and_wip.sql` | ICE scoring + WIP limits | Applied |
+| 20260207 | `add_labels_system.sql` | kanban_labels + junction table | Applied |
+| 20260212 | `master_kanban_refactor.sql` | RLS policies, Master View, RPC | Applied |
+| 20260212 | `global_columns.sql` | Global column seed + data migration | Applied |
+| 20260212 | `create_kanban_time_entries.sql` | Card-based time tracking table | Applied |
+| 20260212 | `fix_time_tracking_schema.sql` | Time tracking schema fixes | Applied |
+| 20260213 | `setup_ultimate_kanban.sql` | 12 standard columns + replication trigger | Applied |
+| 20260213 | `capacity_guard_schema.sql` | `estimated_minutes` column + capacity features | Applied |
+| 20260214 | `create_card_covers_bucket.sql` | Supabase Storage bucket for card covers | Applied |
+| 20260214 | `add_is_pinned_to_kanban_cards.sql` | `is_pinned` + `pinned_at` columns + index | Applied |
+| 20260214 | `update_master_kanban_for_pin.sql` | Updated View + RPC with pin + cover fields | Applied |
 
-```sql
--- Habilita extensão p/ UUIDs
-create extension if not exists "uuid-ossp";
+## How to Apply Migrations
 
--- ROLES (Enum)
-create type user_role as enum ('KYRIE_ADMIN', 'KYRIE_TEAM', 'CLIENT_OWNER', 'CLIENT_VIEWER');
+```bash
+# Install Supabase CLI
+npm install supabase --save-dev
 
--- ORGANIZATIONS (Clientes)
-create table organizations (
-  id uuid default uuid_generate_v4() primary key,
-  name text not null,
-  slug text unique not null, -- ex: 'adega-anitas'
-  logo_url text,
-  metadata jsonb default '{}'::jsonb, -- configurações extras
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+# Login
+npx supabase login
 
--- PROFILES (Extensão da tabela auth.users)
-create table profiles (
-  id uuid references auth.users on delete cascade primary key,
-  organization_id uuid references organizations(id),
-  full_name text,
-  role user_role default 'CLIENT_VIEWER',
-  avatar_url text,
-  updated_at timestamp with time zone
-);
+# Link to project
+npx supabase link --project-ref <project-id>
 
--- PROJECTS
-create table projects (
-  id uuid default uuid_generate_v4() primary key,
-  organization_id uuid references organizations(id) not null,
-  name text not null,
-  status text check (status in ('active', 'archived', 'on_hold')) default 'active',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
+# Create a new migration
+npx supabase migration new <migration_name>
 
--- TASKS (Unificado)
-create table tasks (
-  id uuid default uuid_generate_v4() primary key,
-  project_id uuid references projects(id),
-  title text not null,
-  description text,
-  status text default 'todo', -- todo, in_progress, done
-  priority text default 'medium', -- low, medium, high, urgent
-  assigned_to uuid references profiles(id),
-  due_date timestamp with time zone,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Row Level Security (RLS)
-alter table organizations enable row level security;
-alter table profiles enable row level security;
-alter table projects enable row level security;
-alter table tasks enable row level security;
-
--- Policies (Exemplos simplificados)
--- Admins veem tudo
-create policy "Admins see all organizations"
-on organizations for select
-to authenticated
-using (
-  exists (
-    select 1 from profiles
-    where profiles.id = auth.uid() and profiles.role = 'KYRIE_ADMIN'
-  )
-);
-
--- Clientes veem só sua org
-create policy "Clients see own organization"
-on organizations for select
-to authenticated
-using (
-  id in (
-    select organization_id from profiles
-    where profiles.id = auth.uid()
-  )
-);
+# Push all pending migrations
+npx supabase db push
 ```
 
-## Como Aplicar
+## Key Migrations Detail
 
-1. Instale a CLI do Supabase: `npm install supabase --save-dev`
-2. Login: `npx supabase login`
-3. Link: `npx supabase link --project-ref <seu-project-id>`
-4. Criar migration: `npx supabase migration new initial_schema`
-5. Colar o SQL acima no arquivo gerado em `supabase/migrations/`
-6. Push: `npx supabase db push`
+### Ultimate Kanban (2026-02-13)
+`20260213_setup_ultimate_kanban.sql`:
+- Created 12 standard global columns (`organization_id = NULL`)
+- Backfilled all existing organizations with local copies
+- Created trigger `sync_kanban_columns_to_all_orgs` for automatic replication
 
-## Migration 002: Master Kanban Refactor & Global Columns (2026-02-12)
+### Pin Feature (2026-02-14)
+`20260214_add_is_pinned_to_kanban_cards.sql`:
+- Added `is_pinned BOOLEAN DEFAULT false`
+- Added `pinned_at TIMESTAMPTZ`
+- Created index for query performance
 
-Refatoração completa do sistema Kanban para suportar **Colunas Globais** e **Master View** de alta performance.
-
-### Arquivos
-- **20260213_setup_ultimate_kanban.sql**: Sets up the 12 standard columns, backfills organizations, and creates the replication trigger `sync_kanban_columns_to_all_orgs`.
-- **20260212_master_kanban_refactor.sql**: Implements RLS policies for `kanban_cards` and `kanban_columns`, and creates the `master_kanban_view`.
-
-### Principais Mudanças
-
-#### 1. Row Level Security (RLS)
-Habilitado em todas as tabelas Kanban (`kanban_cards`, `kanban_columns`, etc.).
-- **Admin:** Acesso total.
-- **Usuário:** Acesso apenas à sua organização (e colunas globais para leitura).
-
-#### 2. Colunas Globais
-- `kanban_columns.organization_id` agora aceita `NULL`.
-- Colunas com `organization_id = NULL` são visíveis para todas as organizações.
-- Migração automática de cards das colunas antigas ('todo', 'doing', 'done') para as novas globais.
-
-#### 3. Views e RPCs
-- **View `master_kanban_view`**: Agrega dados de cards, colunas e organizações.
-- **RPC `get_master_kanban`**: Função otimizada para buscar dados paginados e filtrados para o painel administrativo.
-
-```sql
--- Exemplo de chamada da RPC
-SELECT * FROM get_master_kanban(
-  page := 1,
-  page_size := 50,
-  status_filter := 'doing',
-  search_text := 'Bug'
-);
-```
+`20260214_update_master_kanban_for_pin.sql`:
+- Recreated `master_kanban_view` with pin + cover fields
+- Updated `get_master_kanban` RPC to sort pinned cards first

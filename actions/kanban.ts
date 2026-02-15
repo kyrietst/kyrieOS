@@ -482,3 +482,22 @@ export async function updateCardCover(
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   return { success: true }
 }
+// Pin Actions
+export async function toggleCardPin(cardId: string, isPinned: boolean) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update({
+      is_pinned: isPinned,
+      pinned_at: isPinned ? new Date().toISOString() : null
+    })
+    .eq('id', cardId)
+
+  if (error) {
+    console.error('Error toggling pin:', error)
+    throw error
+  }
+
+  revalidatePath('/kyrie/workspace/kanban')
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}

@@ -4,6 +4,23 @@ All notable changes to the Kyrie OS project will be documented in this file.
 
 ## [Unreleased]
 
+### [1.8.0] - 2026-02-14
+### Added
+- **Pin Card Feature:** Users can pin cards to the top of their column for visual priority.
+  - Database: `is_pinned` (BOOLEAN) and `pinned_at` (TIMESTAMPTZ) columns on `kanban_cards`.
+  - Backend: `toggleCardPin` server action + updated `master_kanban_view` and `get_master_kanban` RPC.
+  - Frontend: Pin indicator icon, context menu action, optimistic updates with framer-motion animation.
+- **Card Covers in Master View:** Cover fields (`cover_type`, `cover_value`, `cover_mode`, `cover_size`, `cover_text_theme`) now included in `master_kanban_view` and RPC.
+- **Card Covers Storage Bucket:** Created `card-covers` Supabase Storage bucket.
+
+### Fixed
+- **Missing Covers in Master View:** Restored all cover fields in `master_kanban_view` after accidental omission during pin migration.
+- **Pin Requiring Page Refresh:** Implemented optimistic local state updates + callback chain for instant reorder without F5.
+- **Master View Card ID:** Fixed `handleTogglePin` to use `card.id || card.card_id` for Master View compatibility.
+
+### Changed
+- **Documentation Refresh:** Updated `db-schema.md`, `MASTER_KANBAN.md`, `KANBAN_DEVELOPER_GUIDE.md`, `MASTER_KANBAN_FEATURE.md`, `DATABASE_MIGRATIONS.md`, and `CHANGELOG.md` to reflect current state.
+
 ### [1.7.0] - 2026-02-13
 ### Added
 - **UI Style Guide**: Created `docs/guides/UI_STYLE_GUIDE.md` defining the new "Borderless" Kanban aesthetic.
