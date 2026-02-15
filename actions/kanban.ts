@@ -482,7 +482,6 @@ export async function updateCardCover(
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   return { success: true }
 }
-// Pin Actions
 export async function toggleCardPin(cardId: string, isPinned: boolean) {
   const supabase = await createClient()
   const { error } = await supabase
@@ -500,4 +499,292 @@ export async function toggleCardPin(cardId: string, isPinned: boolean) {
 
   revalidatePath('/kyrie/workspace/kanban')
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+}
+
+// ==================== CHECKLIST ACTIONS ====================
+
+export async function addChecklist(cardId: string, organizationId: string, title: string = 'Checklist') {
+  const supabase = await createClient()
+
+  // Get max position
+  const { data: existing } = await supabase
+    .from('kanban_checklists')
+    .select('position')
+    .eq('card_id', cardId)
+    .order('position', { ascending: false })
+    .limit(1)
+
+  const nextPos = (existing?.[0]?.position ?? -1) + 1
+
+  const { data, error } = await supabase
+    .from('kanban_checklists')
+    .insert({ card_id: cardId, organization_id: organizationId, title, position: nextPos })
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+  return data
+}
+
+export async function deleteChecklist(checklistId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_checklists')
+    .delete()
+    .eq('id', checklistId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+}
+
+export async function addChecklistItem(checklistId: string, organizationId: string, content: string) {
+  const supabase = await createClient()
+
+  // Get max position
+  const { data: existing } = await supabase
+    .from('kanban_checklist_items')
+    .select('position')
+    .eq('checklist_id', checklistId)
+    .order('position', { ascending: false })
+    .limit(1)
+
+  const nextPos = (existing?.[0]?.position ?? -1) + 1
+
+  const { data, error } = await supabase
+    .from('kanban_checklist_items')
+    .insert({
+      checklist_id: checklistId,
+      organization_id: organizationId,
+      content,
+      position: nextPos
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+  return data
+}
+
+export async function toggleChecklistItem(itemId: string, isCompleted: boolean) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_checklist_items')
+    .update({
+      is_completed: isCompleted,
+      completed_at: isCompleted ? new Date().toISOString() : null
+    })
+    .eq('id', itemId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+}
+
+export async function deleteChecklistItem(itemId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_checklist_items')
+    .delete()
+    .eq('id', itemId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+}
+
+export async function getCardChecklists(cardId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('kanban_checklists')
+    .select(`
+      *,
+      items:kanban_checklist_items(*)
+    `)
+    .eq('card_id', cardId)
+    .order('position')
+
+  if (error) throw error
+
+  // Sort items by position within each checklist
+  return (data || []).map((cl: any) => ({
+    ...cl,
+    items: (cl.items || []).sort((a: any, b: any) => a.position - b.position)
+  }))
+}
+
+// ==================== COMMENT ACTIONS ====================
+
+export async function addCardComment(cardId: string, organizationId: string, content: string) {
+  const supabase = await createClient()
+
+  // Get current user
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // 1. Insert into dedicated comments table
+  const { data: comment, error } = await supabase
+    .from('kanban_card_comments')
+    .insert({
+      card_id: cardId,
+      organization_id: organizationId,
+      user_id: user.id,
+      content
+    })
+    .select(`
+      *,
+      profiles:user_id(full_name, avatar_url)
+    `)
+    .single()
+
+  if (error) throw error
+
+  // 2. Also log to activities feed (fire-and-forget, don't block on failure)
+  try {
+    await supabase.rpc('log_activity', {
+      p_user_id: user.id,
+      p_user_name: (comment as any).profiles?.full_name || user.email || 'Unknown',
+      p_org_id: organizationId,
+      p_type: 'comment_added',
+      p_title: 'Comentou no cartão',
+      p_description: content.substring(0, 200),
+      p_target_type: 'kanban_card',
+      p_target_id: cardId,
+      p_metadata: { comment_id: comment.id }
+    })
+  } catch (e) {
+    console.error('Failed to log comment activity:', e)
+  }
+
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+  return comment
+}
+
+export async function getCardComments(cardId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('kanban_card_comments')
+    .select(`
+      *,
+      profiles:user_id(full_name, avatar_url)
+    `)
+    .eq('card_id', cardId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function deleteCardComment(commentId: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_card_comments')
+    .delete()
+    .eq('id', commentId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+}
+
+// ==================== ATTACHMENT ACTIONS ====================
+
+export async function uploadCardAttachment(formData: FormData) {
+  const supabase = await createClient()
+
+  const file = formData.get('file') as File
+  const cardId = formData.get('cardId') as string
+  const organizationId = formData.get('organizationId') as string
+
+  if (!file || !cardId || !organizationId) throw new Error('Missing required fields')
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not authenticated')
+
+  // Upload to Storage
+  const fileExt = file.name.split('.').pop()
+  const filePath = `${user.id}/${cardId}/${Date.now()}.${fileExt}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('kanban-attachments')
+    .upload(filePath, file)
+
+  if (uploadError) throw uploadError
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('kanban-attachments')
+    .getPublicUrl(filePath)
+
+  // Insert metadata
+  const { data, error } = await supabase
+    .from('kanban_attachments')
+    .insert({
+      card_id: cardId,
+      organization_id: organizationId,
+      user_id: user.id,
+      file_name: file.name,
+      file_url: urlData.publicUrl,
+      file_type: file.type,
+      file_size: file.size
+    })
+    .select()
+    .single()
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+  return data
+}
+
+export async function getCardAttachments(cardId: string) {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('kanban_attachments')
+    .select('*')
+    .eq('card_id', cardId)
+    .order('created_at', { ascending: false })
+
+  if (error) throw error
+  return data || []
+}
+
+export async function deleteCardAttachment(attachmentId: string, fileUrl: string) {
+  const supabase = await createClient()
+
+  // Extract path from URL for storage deletion
+  const urlParts = fileUrl.split('/kanban-attachments/')
+  if (urlParts[1]) {
+    await supabase.storage
+      .from('kanban-attachments')
+      .remove([urlParts[1]])
+  }
+
+  const { error } = await supabase
+    .from('kanban_attachments')
+    .delete()
+    .eq('id', attachmentId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
+}
+
+// ==================== DUE DATE ACTIONS ====================
+
+export async function updateCardDueDate(cardId: string, dueDate: string | null) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('kanban_cards')
+    .update({ due_date: dueDate })
+    .eq('id', cardId)
+
+  if (error) throw error
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
+  revalidatePath('/kyrie/workspace/kanban')
 }

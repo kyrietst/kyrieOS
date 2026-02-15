@@ -60,8 +60,65 @@ export interface KanbanCard {
         name: string;
         is_done_column: boolean;
     };
+    // Optional joined data
+    due_date?: string | null;
+    checklists?: KanbanChecklist[];
+    comments?: KanbanCardComment[];
+    attachments?: KanbanAttachment[];
 }
 
+// ==================== CHECKLIST TYPES ====================
+
+export interface KanbanChecklist {
+    id: string;
+    card_id: string;
+    organization_id: string;
+    title: string;
+    position: number;
+    created_at: string;
+    items?: KanbanChecklistItem[];
+}
+
+export interface KanbanChecklistItem {
+    id: string;
+    checklist_id: string;
+    organization_id: string;
+    content: string;
+    is_completed: boolean;
+    completed_at?: string | null;
+    position: number;
+    created_at: string;
+}
+
+// ==================== COMMENT TYPES ====================
+
+export interface KanbanCardComment {
+    id: string;
+    card_id: string;
+    organization_id: string;
+    user_id: string;
+    content: string;
+    created_at: string;
+    updated_at: string;
+    profiles?: {
+        full_name: string;
+        avatar_url: string | null;
+    };
+}
+
+// ==================== ATTACHMENT TYPES ====================
+
+export interface KanbanAttachment {
+    id: string;
+    card_id: string;
+    organization_id: string;
+    user_id?: string;
+    file_name: string;
+    file_url: string;
+    file_type?: string;
+    file_size?: number;
+    created_at: string;
+}
 
 export interface TimeEntry {
     id: string;

@@ -21,8 +21,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover'
-import { useState, useRef, useEffect } from 'react'
-import { updateCardDetails, toggleCardCompletion } from '@/actions/kanban'
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { updateCardDetails, toggleCardCompletion, updateCardDueDate } from '@/actions/kanban'
+import { addCardComment, getCardComments, getCardChecklists, getCardAttachments, uploadCardAttachment, deleteCardAttachment } from '@/actions/kanban'
 import { toast } from 'sonner'
 import {
     Loader2,
@@ -49,15 +50,19 @@ import {
     MessageSquare,
     ChevronDown,
     Megaphone,
-    Bell
+    Bell,
+    FileText,
+    Trash2,
+    Send
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { startTimer, stopTimer, getCardTimeLogs } from '@/actions/time-tracking'
-import { TimeEntry } from '@/types/kanban'
+import { TimeEntry, KanbanChecklist, KanbanCardComment, KanbanAttachment } from '@/types/kanban'
 import CardCoverSelector from './CardCoverSelector'
 import { TimerBadge } from './TimerBadge'
 import { LabelPicker } from './LabelPicker'
+import { ChecklistSection } from './ChecklistSection'
 import { AvatarStack } from '@/components/ui/avatar-stack'
 import {
     Avatar,
@@ -72,12 +77,11 @@ interface KanbanCardDetailsProps {
     card: any
     activeTimer?: TimeEntry | null
     onTimerUpdate?: (t: TimeEntry | null) => void
-    // Assuming these will be passed or fetched
     attachments?: any[]
     fetchCard?: () => void
 }
 
-export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerUpdate, attachments = [], fetchCard }: KanbanCardDetailsProps) {
+export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerUpdate, attachments: propAttachments = [], fetchCard }: KanbanCardDetailsProps) {
     const [title, setTitle] = useState(card.title)
     const [description, setDescription] = useState(card.description || '')
     const [isSaving, setIsSaving] = useState(false)
@@ -102,6 +106,20 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     // Completion State (Optimistic)
     const [isCompleted, setIsCompleted] = useState(card.kanban_columns?.is_done_column || false)
 
+    // ==================== NEW FEATURE STATES ====================
+    const [checklists, setChecklists] = useState<KanbanChecklist[]>([])
+    const [comments, setComments] = useState<KanbanCardComment[]>([])
+    const [cardAttachments, setCardAttachments] = useState<KanbanAttachment[]>([])
+    const [dueDate, setDueDate] = useState<string>(card.due_date || '')
+    const [newComment, setNewComment] = useState('')
+    const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+    const [isUploadingFile, setIsUploadingFile] = useState(false)
+    const [isDueDateOpen, setIsDueDateOpen] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+
+    // Active section state (for action buttons)
+    const [activeSection, setActiveSection] = useState<string | null>(null)
+
     const handleToggleComplete = async () => {
         const newState = !isCompleted
         setIsCompleted(newState)
@@ -122,22 +140,37 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
         textTheme: (card.cover_text_theme as 'light' | 'dark') || 'dark'
     }
 
-    // Fetch Logs & Data on Open
+    // Fetch all data on open
+    const refreshData = useCallback(async () => {
+        if (!card.id) return
+        try {
+            const [checklistData, commentData, attachmentData] = await Promise.all([
+                getCardChecklists(card.id),
+                getCardComments(card.id),
+                getCardAttachments(card.id)
+            ])
+            setChecklists(checklistData)
+            setComments(commentData)
+            setCardAttachments(attachmentData)
+        } catch (e) {
+            console.error('Failed to fetch card data:', e)
+        }
+    }, [card.id])
+
     useEffect(() => {
         if (isOpen) {
-            if (typeof fetchCard === 'function') {
-                fetchCard()
-            }
+            if (typeof fetchCard === 'function') fetchCard()
             getCardTimeLogs(card.id).then(setTimeLogs).catch(console.error)
+            refreshData()
+            setDueDate(card.due_date || '')
         }
-    }, [isOpen, card.id, fetchCard])
+    }, [isOpen, card.id, fetchCard, refreshData, card.due_date])
 
     const handleStartTimer = async () => {
         try {
             setIsTimerLoading(true)
             const newTimer = await startTimer(card.id)
             if (onTimerUpdate) onTimerUpdate(newTimer)
-            // Logs will be refreshed on revalidation or manual add if needed
         } catch (error) {
             toast.error('Erro ao iniciar')
         } finally {
@@ -150,8 +183,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
             setIsTimerLoading(true)
             await stopTimer()
             if (onTimerUpdate) onTimerUpdate(null)
-
-            // Refresh logs
             const logs = await getCardTimeLogs(card.id)
             setTimeLogs(logs)
         } catch (error) {
@@ -171,7 +202,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
     const handleSave = async () => {
         if (title.trim() === '') return
-
         setIsSaving(true)
         try {
             await updateCardDetails(card.id, {
@@ -191,16 +221,95 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
         }
     }
 
-    // Handle Ctrl+Enter to save
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.ctrlKey && e.key === 'Enter') {
-            handleSave()
-        }
-        // Blur on Escape if editing desc
+        if (e.ctrlKey && e.key === 'Enter') handleSave()
         if (e.key === 'Escape' && isEditingDesc) {
             setIsEditingDesc(false)
             e.stopPropagation()
         }
+    }
+
+    // ==================== COMMENT HANDLERS ====================
+    const handleSubmitComment = async () => {
+        if (!newComment.trim()) return
+        setIsSubmittingComment(true)
+        try {
+            await addCardComment(card.id, card.organization_id, newComment.trim())
+            setNewComment('')
+            await refreshData()
+            toast.success('Comentário adicionado')
+        } catch {
+            toast.error('Erro ao adicionar comentário')
+        } finally {
+            setIsSubmittingComment(false)
+        }
+    }
+
+    // ==================== ATTACHMENT HANDLERS ====================
+    const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+        setIsUploadingFile(true)
+        try {
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('cardId', card.id)
+            formData.append('organizationId', card.organization_id)
+            await uploadCardAttachment(formData)
+            await refreshData()
+            toast.success('Arquivo anexado')
+        } catch {
+            toast.error('Erro ao enviar arquivo')
+        } finally {
+            setIsUploadingFile(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
+
+    const handleDeleteAttachment = async (id: string, url: string) => {
+        try {
+            await deleteCardAttachment(id, url)
+            await refreshData()
+            toast.success('Anexo excluído')
+        } catch {
+            toast.error('Erro ao excluir anexo')
+        }
+    }
+
+    // ==================== DUE DATE HANDLERS ====================
+    const handleDueDateChange = async (dateValue: string) => {
+        setDueDate(dateValue)
+        try {
+            await updateCardDueDate(card.id, dateValue || null)
+            toast.success(dateValue ? 'Data definida' : 'Data removida')
+            setIsDueDateOpen(false)
+        } catch {
+            toast.error('Erro ao atualizar data')
+        }
+    }
+
+    // Due date status helpers
+    const isOverdue = dueDate && new Date(dueDate) < new Date() && !isCompleted
+    const isDueSoon = dueDate && !isOverdue && new Date(dueDate).getTime() - Date.now() < 86400000 && !isCompleted
+
+    // Format file size
+    const formatFileSize = (bytes?: number) => {
+        if (!bytes) return ''
+        if (bytes < 1024) return `${bytes} B`
+        if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`
+        return `${(bytes / 1048576).toFixed(1)} MB`
+    }
+
+    // Relative time
+    const timeAgo = (dateStr: string) => {
+        const diff = Date.now() - new Date(dateStr).getTime()
+        const mins = Math.floor(diff / 60000)
+        if (mins < 1) return 'Agora'
+        if (mins < 60) return `Há ${mins}m`
+        const hours = Math.floor(mins / 60)
+        if (hours < 24) return `Há ${hours}h`
+        const days = Math.floor(hours / 24)
+        return `Há ${days}d`
     }
 
     return (
@@ -325,7 +434,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                             <CardCoverSelector
                                 cardId={card.id}
                                 currentCover={coverData}
-                                attachments={attachments}
+                                attachments={propAttachments}
                                 onUpdate={fetchCard}
                                 variant="icon"
                                 organizationId={card.organization_id}
@@ -387,7 +496,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
                             {/* Header: Title Only */}
                             <div className="flex gap-4">
-                                {/* Circle/Icon for Title often used in Trello, can simulate 'status' or just icon */}
                                 <div className="mt-2 text-muted-foreground bg-transparent">
                                     <Button
                                         variant="ghost"
@@ -408,15 +516,15 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                     <Input
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        onBlur={handleSave} // Save title on blur
+                                        onBlur={handleSave}
                                         onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur() }}
                                         className="text-xl md:text-2xl font-bold border-none shadow-none px-2 h-auto rounded-md focus-visible:ring-0 focus-visible:ring-offset-0 !bg-transparent dark:!bg-transparent hover:bg-transparent transition-colors -ml-2 w-full text-foreground"
                                         placeholder="Título da tarefa"
                                     />
-                                    {/* Removed 'na coluna' text as it is now in Header */}
                                 </div>
                             </div>
 
+                            {/* Action Buttons Bar */}
                             <div className="pl-10 flex flex-wrap gap-2">
                                 <ActionButton icon={User} label="Membros" />
                                 <LabelPicker
@@ -425,12 +533,62 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                     selectedLabelIds={labelIds}
                                     onLabelsChange={setLabelIds}
                                 />
-                                <ActionButton icon={CheckSquare} label="Checklist" />
-                                <ActionButton icon={Calendar} label="Datas" />
-                                <ActionButton icon={Paperclip} label="Anexo" />
+                                <ActionButton
+                                    icon={CheckSquare}
+                                    label="Checklist"
+                                    onClick={() => setActiveSection(activeSection === 'checklist' ? null : 'checklist')}
+                                    active={activeSection === 'checklist' || checklists.length > 0}
+                                />
+                                <Popover open={isDueDateOpen} onOpenChange={setIsDueDateOpen}>
+                                    <PopoverTrigger asChild>
+                                        <div>
+                                            <ActionButton
+                                                icon={Calendar}
+                                                label={dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : "Datas"}
+                                                onClick={() => setIsDueDateOpen(true)}
+                                                active={!!dueDate}
+                                                variant={isOverdue ? 'destructive' : isDueSoon ? 'warning' : undefined}
+                                            />
+                                        </div>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-4" align="start">
+                                        <div className="space-y-3">
+                                            <h4 className="text-sm font-semibold">Data de entrega</h4>
+                                            <Input
+                                                type="datetime-local"
+                                                value={dueDate ? new Date(dueDate).toISOString().slice(0, 16) : ''}
+                                                onChange={(e) => handleDueDateChange(e.target.value ? new Date(e.target.value).toISOString() : '')}
+                                                className="text-sm"
+                                            />
+                                            {dueDate && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="w-full text-red-600 hover:text-red-700"
+                                                    onClick={() => handleDueDateChange('')}
+                                                >
+                                                    Remover data
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                                <ActionButton
+                                    icon={Paperclip}
+                                    label={`Anexo${cardAttachments.length > 0 ? ` (${cardAttachments.length})` : ''}`}
+                                    onClick={() => fileInputRef.current?.click()}
+                                    isLoading={isUploadingFile}
+                                />
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    onChange={handleFileSelect}
+                                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.mp4"
+                                />
                             </div>
 
-                            {/* Metadata (Members/Labels) if visible */}
+                            {/* Metadata (Members/Labels + Due Date) */}
                             <div className="pl-10 flex flex-wrap gap-8">
                                 {/* Members Stack */}
                                 <div className="space-y-1.5">
@@ -473,7 +631,80 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                         </div>
                                     </div>
                                 )}
+
+                                {/* Due Date Badge */}
+                                {dueDate && (
+                                    <div className="space-y-1.5">
+                                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entrega</h3>
+                                        <Badge
+                                            variant={isOverdue ? "destructive" : isDueSoon ? "outline" : "secondary"}
+                                            className={cn(
+                                                "h-9 px-3 text-sm font-semibold",
+                                                isOverdue && "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400",
+                                                isDueSoon && "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400 border-yellow-300"
+                                            )}
+                                        >
+                                            <Calendar className="w-3.5 h-3.5 mr-1.5" />
+                                            {new Date(dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            {isOverdue && ' (Atrasado)'}
+                                        </Badge>
+                                    </div>
+                                )}
                             </div>
+
+                            {/* Checklist Section */}
+                            {(checklists.length > 0 || activeSection === 'checklist') && (
+                                <div className="pl-10 pt-2">
+                                    <ChecklistSection
+                                        cardId={card.id}
+                                        organizationId={card.organization_id}
+                                        checklists={checklists}
+                                        onUpdate={refreshData}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Attachments Section */}
+                            {cardAttachments.length > 0 && (
+                                <div className="pl-10 pt-2">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <Paperclip className="w-4 h-4 text-muted-foreground" />
+                                        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Anexos</h3>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {cardAttachments.map(att => (
+                                            <div key={att.id} className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 group transition-colors">
+                                                <div className="w-10 h-10 rounded bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                                                    {att.file_type?.startsWith('image/') ? (
+                                                        <ImageIcon className="w-5 h-5 text-blue-500" />
+                                                    ) : (
+                                                        <FileText className="w-5 h-5 text-muted-foreground" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <a
+                                                        href={att.file_url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-sm font-medium hover:underline truncate block"
+                                                    >
+                                                        {att.file_name}
+                                                    </a>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {formatFileSize(att.file_size)} • {timeAgo(att.created_at)}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleDeleteAttachment(att.id, att.file_url)}
+                                                    className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-red-500 transition-opacity p-1"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Time Tracking Section */}
                             <div className="pl-10 pt-4">
@@ -484,7 +715,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
                                 <div className="bg-slate-50 dark:bg-zinc-900/50 rounded-lg border border-slate-200 dark:border-zinc-800 p-4">
                                     <div className="flex flex-col gap-4">
-                                        {/* Logs Table */}
                                         {timeLogs.length > 0 ? (
                                             <div className="space-y-2">
                                                 {timeLogs.map(log => (
@@ -541,54 +771,36 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                 </div>
 
                                 <div className="bg-slate-50 dark:bg-zinc-900/50 rounded-lg border border-slate-200 dark:border-zinc-800 p-4 space-y-4">
-                                    {/* Impact */}
                                     <div>
                                         <label className="text-xs font-semibold text-muted-foreground mb-2 block">
                                             Impact (1-10): {impact}
                                         </label>
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="10"
-                                            value={impact}
+                                        <input type="range" min="1" max="10" value={impact}
                                             onChange={(e) => setImpact(Number(e.target.value))}
                                             onMouseUp={handleSave}
                                             className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gradient-to-r from-red-200 to-green-400 dark:from-red-900 dark:to-green-600"
                                         />
                                     </div>
-
-                                    {/* Confidence */}
                                     <div>
                                         <label className="text-xs font-semibold text-muted-foreground mb-2 block">
                                             Confidence (1-10): {confidence}
                                         </label>
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="10"
-                                            value={confidence}
+                                        <input type="range" min="1" max="10" value={confidence}
                                             onChange={(e) => setConfidence(Number(e.target.value))}
                                             onMouseUp={handleSave}
                                             className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gradient-to-r from-yellow-200 to-blue-400 dark:from-yellow-900 dark:to-blue-600"
                                         />
                                     </div>
-
-                                    {/* Effort */}
                                     <div>
                                         <label className="text-xs font-semibold text-muted-foreground mb-2 block">
                                             Effort (1-10): {effort}
                                         </label>
-                                        <input
-                                            type="range"
-                                            min="1"
-                                            max="10"
-                                            value={effort}
+                                        <input type="range" min="1" max="10" value={effort}
                                             onChange={(e) => setEffort(Number(e.target.value))}
                                             onMouseUp={handleSave}
                                             className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-gradient-to-r from-purple-200 to-orange-400 dark:from-purple-900 dark:to-orange-600"
                                         />
                                     </div>
-
                                     <p className="text-xs text-muted-foreground mt-3">
                                         ICE = (Impact × Confidence) / Effort — Quanto maior, melhor a prioridade
                                     </p>
@@ -617,8 +829,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                                 className="w-full min-h-[120px] p-3 text-sm rounded-md border border-input bg-background shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
                                                 autoFocus
                                             />
-
-                                            {/* Rich Editor Toolbar Mock */}
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-1">
                                                     <Button size="sm" onClick={handleSave} disabled={isSaving}>
@@ -629,7 +839,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                                         Cancelar
                                                     </Button>
                                                 </div>
-
                                                 <div className="flex items-center gap-1 text-muted-foreground">
                                                     <ToolbarButton icon={Bold} />
                                                     <ToolbarButton icon={Italic} />
@@ -656,16 +865,18 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
                         </div>
 
-                        {/* Right Column: Activity & Comments (Fixed width on desktop, full on mobile) */}
+                        {/* Right Column: Activity & Comments */}
                         <div className="w-full md:w-[350px] lg:w-[400px] border-t md:border-t-0 md:border-l border-border/50 bg-muted/30 p-6 md:p-8 space-y-6">
 
                             {/* Activity Header */}
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <List className="w-5 h-5 text-muted-foreground" />
-                                    <h3 className="font-semibold text-foreground">Atividade</h3>
+                                    <MessageSquare className="w-5 h-5 text-muted-foreground" />
+                                    <h3 className="font-semibold text-foreground">Comentários</h3>
+                                    {comments.length > 0 && (
+                                        <span className="text-xs text-muted-foreground">({comments.length})</span>
+                                    )}
                                 </div>
-                                <Button variant="ghost" size="sm" className="h-8">Mostrar detalhes</Button>
                             </div>
 
                             {/* New Comment Input */}
@@ -674,34 +885,61 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                 <div className="flex-1">
                                     <div className="bg-white dark:bg-zinc-800 border rounded-md shadow-sm overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                                         <textarea
+                                            value={newComment}
+                                            onChange={(e) => setNewComment(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.ctrlKey && e.key === 'Enter') handleSubmitComment()
+                                            }}
                                             placeholder="Escrever um comentário..."
                                             className="w-full p-2.5 text-sm resize-none border-none focus:ring-0 bg-transparent min-h-[40px] appearance-none"
                                             rows={1}
                                         />
-                                        <div className="px-2 pb-2 flex justify-end">
-                                            {/* Hidden formatting tools or 'Save' button that appears on focus could go here */}
-                                        </div>
+                                        {newComment.trim() && (
+                                            <div className="px-2 pb-2 flex justify-end">
+                                                <Button
+                                                    size="sm"
+                                                    onClick={handleSubmitComment}
+                                                    disabled={isSubmittingComment}
+                                                    className="h-7 text-xs gap-1"
+                                                >
+                                                    {isSubmittingComment ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                                    Enviar
+                                                </Button>
+                                            </div>
+                                        )}
                                     </div>
+                                    <p className="text-[10px] text-muted-foreground mt-1">Ctrl+Enter para enviar</p>
                                 </div>
                             </div>
 
-                            {/* Timeline / Feed */}
+                            {/* Comments List */}
                             <div className="space-y-4 pt-2">
-                                {/* Mock Item */}
-                                <div className="flex gap-3 group">
-                                    <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex-shrink-0 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">LF</div>
-                                    <div className="text-sm">
-                                        <span className="font-semibold">Lukke Ferreira</span> adicionou este cartão a <span className="underline decoration-dotted cursor-pointer hover:text-primary">Em Execução</span>
-                                        <div className="text-xs text-muted-foreground mt-0.5">Há 12 minutos</div>
+                                {comments.length > 0 ? (
+                                    comments.map(comment => (
+                                        <div key={comment.id} className="flex gap-3 group">
+                                            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex-shrink-0 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">
+                                                {(comment.profiles as any)?.full_name?.[0]?.toUpperCase() || 'U'}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="font-semibold text-sm">
+                                                        {(comment.profiles as any)?.full_name || 'Usuário'}
+                                                    </span>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        {timeAgo(comment.created_at)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm mt-0.5 text-foreground/90 whitespace-pre-wrap break-words">
+                                                    {comment.content}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div className="text-sm text-center py-6 text-muted-foreground">
+                                        Nenhum comentário ainda. Seja o primeiro!
                                     </div>
-                                </div>
-                                <div className="flex gap-3 group">
-                                    <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex-shrink-0 flex items-center justify-center text-xs font-bold text-muted-foreground">EU</div>
-                                    <div className="text-sm">
-                                        <span className="font-semibold">Você</span> mudou o título do cartão
-                                        <div className="text-xs text-muted-foreground mt-0.5">Há 2 minutos</div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
                         </div>
@@ -713,10 +951,29 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     )
 }
 
-function ActionButton({ icon: Icon, label }: { icon: any, label: string }) {
+function ActionButton({ icon: Icon, label, onClick, active, isLoading, variant }: {
+    icon: any
+    label: string
+    onClick?: () => void
+    active?: boolean
+    isLoading?: boolean
+    variant?: 'destructive' | 'warning'
+}) {
     return (
-        <Button variant="secondary" size="sm" className="h-8 px-3 text-xs font-medium bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-transparent hover:border-slate-300 dark:hover:border-slate-600 transition-all shadow-sm">
-            <Icon className="w-3.5 h-3.5 mr-1.5" />
+        <Button
+            variant="secondary"
+            size="sm"
+            onClick={onClick}
+            className={cn(
+                "h-8 px-3 text-xs font-medium border border-transparent transition-all shadow-sm",
+                active
+                    ? "bg-primary/10 dark:bg-primary/20 text-primary border-primary/30 hover:bg-primary/20"
+                    : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600",
+                variant === 'destructive' && "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400 border-red-200 dark:border-red-900",
+                variant === 'warning' && "bg-yellow-100 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-900"
+            )}
+        >
+            {isLoading ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Icon className="w-3.5 h-3.5 mr-1.5" />}
             {label}
         </Button>
     )
