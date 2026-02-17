@@ -16,13 +16,14 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { DatePicker } from "./DatePicker"
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover'
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { updateCardDetails, toggleCardCompletion, updateCardDueDate } from '@/actions/kanban'
+import { updateCardDetails, toggleCardCompletion, updateCardDates } from '@/actions/kanban'
 import { addCardComment, getCardComments, getCardChecklists, getCardAttachments, uploadCardAttachment, deleteCardAttachment } from '@/actions/kanban'
 import { toast } from 'sonner'
 import {
@@ -33,7 +34,6 @@ import {
     User,
     Tag,
     CheckSquare,
-    Calendar,
     Paperclip,
     MoveRight,
     Archive,
@@ -113,11 +113,9 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
     const [checklists, setChecklists] = useState<KanbanChecklist[]>([])
     const [comments, setComments] = useState<KanbanCardComment[]>([])
     const [cardAttachments, setCardAttachments] = useState<KanbanAttachment[]>([])
-    const [dueDate, setDueDate] = useState<string>(card.due_date || '')
     const [newComment, setNewComment] = useState('')
     const [isSubmittingComment, setIsSubmittingComment] = useState(false)
     const [isUploadingFile, setIsUploadingFile] = useState(false)
-    const [isDueDateOpen, setIsDueDateOpen] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     // Member State
@@ -170,9 +168,8 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
             if (typeof fetchCard === 'function') fetchCard()
             getCardTimeLogs(card.id).then(setTimeLogs).catch(console.error)
             refreshData()
-            setDueDate(card.due_date || '')
         }
-    }, [isOpen, card.id, fetchCard, refreshData, card.due_date])
+    }, [isOpen, card.id, fetchCard, refreshData])
 
     const handleStartTimer = async () => {
         try {
@@ -284,21 +281,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
         }
     }
 
-    // ==================== DUE DATE HANDLERS ====================
-    const handleDueDateChange = async (dateValue: string) => {
-        setDueDate(dateValue)
-        try {
-            await updateCardDueDate(card.id, dateValue || null)
-            toast.success(dateValue ? 'Data definida' : 'Data removida')
-            setIsDueDateOpen(false)
-        } catch {
-            toast.error('Erro ao atualizar data')
-        }
-    }
 
-    // Due date status helpers
-    const isOverdue = dueDate && new Date(dueDate) < new Date() && !isCompleted
-    const isDueSoon = dueDate && !isOverdue && new Date(dueDate).getTime() - Date.now() < 86400000 && !isCompleted
 
     // Format file size
     const formatFileSize = (bytes?: number) => {
@@ -534,15 +517,6 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
                             {/* Action Buttons Bar */}
                             <div className="pl-10 flex flex-wrap gap-2">
-                                <MemberPicker
-                                    cardId={card.id}
-                                    organizationId={card.organization_id}
-                                    selectedMemberIds={memberIds}
-                                    onMembersChange={setMemberIds}
-                                    trigger={
-                                        <CardActionButton icon={User} label="Membros" />
-                                    }
-                                />
                                 <LabelPicker
                                     cardId={card.id}
                                     organizationId={card.organization_id}
@@ -555,40 +529,21 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                     onClick={() => setActiveSection(activeSection === 'checklist' ? null : 'checklist')}
                                     active={activeSection === 'checklist' || checklists.length > 0}
                                 />
-                                <Popover open={isDueDateOpen} onOpenChange={setIsDueDateOpen}>
-                                    <PopoverTrigger asChild>
-                                        <div>
-                                            <CardActionButton
-                                                icon={Calendar}
-                                                label={dueDate ? new Date(dueDate).toLocaleDateString('pt-BR') : "Datas"}
-                                                onClick={() => setIsDueDateOpen(true)}
-                                                active={!!dueDate}
-                                                variantTheme={isOverdue ? 'destructive' : isDueSoon ? 'warning' : undefined}
-                                            />
-                                        </div>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-4" align="start">
-                                        <div className="space-y-3">
-                                            <h4 className="text-sm font-semibold">Data de entrega</h4>
-                                            <Input
-                                                type="datetime-local"
-                                                value={dueDate ? new Date(dueDate).toISOString().slice(0, 16) : ''}
-                                                onChange={(e) => handleDueDateChange(e.target.value ? new Date(e.target.value).toISOString() : '')}
-                                                className="text-sm"
-                                            />
-                                            {dueDate && (
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="w-full text-red-600 hover:text-red-700"
-                                                    onClick={() => handleDueDateChange('')}
-                                                >
-                                                    Remover data
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </PopoverContent>
-                                </Popover>
+                                <DatePicker
+                                    cardId={card.id}
+                                    startDate={card.start_date}
+                                    dueDate={card.due_date}
+                                    reminder={card.reminder_at}
+                                    completed={card.is_due_date_completed}
+                                    onUpdate={async (data) => {
+                                        await updateCardDates(card.id, {
+                                            startDate: data.startDate,
+                                            dueDate: data.dueDate,
+                                            reminder: data.reminder
+                                        })
+                                        refreshData()
+                                    }}
+                                />
                                 <CardActionButton
                                     icon={Paperclip}
                                     label={`Anexo${cardAttachments.length > 0 ? ` (${cardAttachments.length})` : ''}`}
@@ -620,9 +575,21 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                                 </Avatar>
                                             )}
                                         </AvatarStack>
-                                        <button className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center hover:bg-slate-300 transition-colors text-muted-foreground">
-                                            <PlusIcon className="w-4 h-4" />
-                                        </button>
+                                        <MemberPicker
+                                            cardId={card.id}
+                                            organizationId={card.organization_id}
+                                            selectedMemberIds={memberIds}
+                                            onMembersChange={setMemberIds}
+                                            trigger={
+                                                <Button
+                                                    variant="outline"
+                                                    size="icon"
+                                                    className="h-8 w-8 rounded-full border-dashed border-muted-foreground/50 hover:border-primary hover:text-primary transition-colors bg-transparent shrink-0"
+                                                >
+                                                    <PlusIcon className="w-4 h-4" />
+                                                </Button>
+                                            }
+                                        />
                                     </div>
                                 </div>
 
@@ -648,24 +615,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                     </div>
                                 )}
 
-                                {/* Due Date Badge */}
-                                {dueDate && (
-                                    <div className="space-y-1.5">
-                                        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entrega</h3>
-                                        <Badge
-                                            variant={isOverdue ? "destructive" : isDueSoon ? "outline" : "secondary"}
-                                            className={cn(
-                                                "h-9 px-3 text-sm font-semibold",
-                                                isOverdue && "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400",
-                                                isDueSoon && "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-400 border-yellow-300"
-                                            )}
-                                        >
-                                            <Calendar className="w-3.5 h-3.5 mr-1.5" />
-                                            {new Date(dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                            {isOverdue && ' (Atrasado)'}
-                                        </Badge>
-                                    </div>
-                                )}
+
                             </div>
 
                             {/* Checklist Section */}

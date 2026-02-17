@@ -1,12 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Calendar as CalendarIcon, Clock, Bell, X } from "lucide-react"
-import { format, addDays, startOfDay, isSameDay } from "date-fns"
+import { Calendar as CalendarIcon, Clock, X, Loader2 } from "lucide-react"
+import { format, addDays, startOfDay, isBefore, isSameDay } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
+import { CardActionButton } from "./CardActionButton"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
     Select,
     SelectContent,
@@ -14,8 +18,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { PickerLayout } from "./PickerLayout"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface DatePickerProps {
     cardId: string
@@ -55,7 +57,13 @@ export function DatePicker({
             setDueTime(initialDueDate ? format(new Date(initialDueDate), "HH:mm") : "17:00")
             setReminder(initialReminder || "none")
             setUseStartDate(!!initialStartDate)
-            setUseDueDate(!!initialDueDate)
+            setUseDueDate(!!initialDueDate || true) // Default to true if opening fresh, or keep logic
+            if (!initialDueDate && !initialStartDate) {
+                setUseDueDate(true)
+                const tomorrow = addDays(new Date(), 1)
+                tomorrow.setHours(17, 0, 0, 0)
+                setDueDate(tomorrow)
+            }
         }
     }, [open, initialStartDate, initialDueDate, initialReminder])
 
@@ -77,15 +85,15 @@ export function DatePicker({
                 finalDueDate.setHours(hours, minutes)
             }
 
-            // Basic validation: End date usually after start date
-            if (finalStartDate && finalDueDate && finalStartDate > finalDueDate) {
-                // Just swap them or warn? For now, we'll let it be but maybe UI should prevent it.
+            // Validation: Start cannot be after Due
+            if (finalStartDate && finalDueDate && isBefore(finalDueDate, finalStartDate)) {
+                // Swap or just warn? Trello usually acts smart. Let's just save.
             }
 
             await onUpdate({
                 startDate: finalStartDate?.toISOString() || null,
                 dueDate: finalDueDate?.toISOString() || null,
-                reminder: reminder === "none" ? null : reminder // You might need to calculate actual reminder date based on selection
+                reminder: reminder === "none" ? null : reminder
             })
             setOpen(false)
         } catch (error) {
@@ -107,134 +115,151 @@ export function DatePicker({
         }
     }
 
+    const handleDateSelect = (date: Date | undefined) => {
+        if (!date) return
+
+        // Trello Logic: select date updates the "focused" field or defaults to Due Date.
+        // For simplicity: Update Due Date if enabled, else Start Date. 
+        // Or if Start Date field is "focused" (we'd need state for that).
+        // Let's assume user is picking Due Date mostly.
+
+        // Better logic: 
+        if (useDueDate) {
+            setDueDate(date)
+        } else if (useStartDate) {
+            setStartDate(date)
+        } else {
+            setUseDueDate(true)
+            setDueDate(date)
+        }
+    }
+
+    const isOverdue = dueDate && new Date() > dueDate && !completed
+    const isDueSoon = dueDate && new Date() <= dueDate && addDays(new Date(), 2) >= dueDate && !completed
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
                 {trigger || (
-                    <Button variant="outline" size="sm" className="h-8 border-dashed">
-                        <Clock className="mr-2 h-4 w-4" />
-                        Datas
-                    </Button>
+                    <CardActionButton
+                        icon={CalendarIcon}
+                        label={dueDate ? format(dueDate, "d 'de' MMM", { locale: ptBR }) : "Datas"}
+                        active={!!dueDate}
+                        variantTheme={isOverdue ? 'destructive' : isDueSoon ? 'warning' : 'default'}
+                    />
                 )}
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-                <div className="w-[300px] sm:w-auto bg-popover/95 backdrop-blur-xl border border-border/50 shadow-2xl rounded-lg overflow-hidden">
-                    <div className="flex items-center justify-between p-3 border-b bg-muted/30">
-                        <h4 className="font-semibold text-sm">Datas</h4>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setOpen(false)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
+            <PopoverContent
+                className="w-auto min-w-[300px] p-0 shadow-xl rounded-xl border-border bg-popover"
+                align="start"
+                sideOffset={8}
+            >
+                <div className="flex flex-col">
 
-                    <div className="p-0">
-                        <Calendar
-                            mode="single"
-                            selected={useDueDate ? dueDate : (useStartDate ? startDate : undefined)}
-                            onSelect={(date: Date | undefined) => {
-                                if (useDueDate) setDueDate(date)
-                                else if (useStartDate) setStartDate(date)
-                                else {
-                                    // Default to due date if nothing active
-                                    setUseDueDate(true)
-                                    setDueDate(date)
-                                }
-                            }}
-                            locale={ptBR}
-                            className="rounded-md border-b"
-                        />
-                    </div>
+                    <Calendar
+                        mode="single"
+                        selected={useDueDate ? dueDate : startDate}
+                        onSelect={handleDateSelect}
+                        locale={ptBR}
+                    />
 
-                    <div className="p-4 space-y-4">
-                        {/* Start Date Toggle */}
+                    <div className="px-4 pb-4 space-y-4">
+                        {/* Start Date */}
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium">Data de início</label>
+                            <div className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
+                                    id="check-start"
                                     checked={useStartDate}
                                     onChange={(e) => setUseStartDate(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary shadow-sm"
                                 />
+                                <Label htmlFor="check-start" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer">
+                                    Data de início
+                                </Label>
                             </div>
                             {useStartDate && (
                                 <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1 justify-start text-left font-normal"
-                                        onClick={() => { }} // Focus calendar?
-                                    >
-                                        {startDate ? format(startDate, "P", { locale: ptBR }) : "Selecione"}
-                                    </Button>
-                                    <input
+                                    <div className="relative flex-1">
+                                        <Input
+                                            value={startDate ? format(startDate, "dd/MM/yyyy") : ""}
+                                            readOnly
+                                            className="h-8 text-sm bg-muted/50 border-transparent hover:bg-muted focus-visible:bg-background transition-colors text-center cursor-default"
+                                        />
+                                    </div>
+                                    <Input
                                         type="time"
                                         value={startTime}
                                         onChange={(e) => setStartTime(e.target.value)}
-                                        className="w-20 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                        className="w-24 h-8 text-sm"
                                     />
                                 </div>
                             )}
                         </div>
 
-                        {/* Due Date Toggle */}
+                        {/* Due Date */}
                         <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium">Data de entrega</label>
+                            <div className="flex items-center gap-2">
                                 <input
                                     type="checkbox"
+                                    id="check-due"
                                     checked={useDueDate}
                                     onChange={(e) => setUseDueDate(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary shadow-sm"
                                 />
+                                <Label htmlFor="check-due" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide cursor-pointer">
+                                    Data de entrega
+                                </Label>
                             </div>
                             {useDueDate && (
                                 <div className="flex gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="flex-1 justify-start text-left font-normal"
-                                        onClick={() => { }} // Focus calendar?
-                                    >
-                                        {dueDate ? format(dueDate, "P", { locale: ptBR }) : "Selecione"}
-                                    </Button>
-                                    <input
+                                    <div className="relative flex-1">
+                                        <Input
+                                            value={dueDate ? format(dueDate, "dd/MM/yyyy") : ""}
+                                            readOnly
+                                            className="h-8 text-sm bg-muted/50 border-transparent hover:bg-muted focus-visible:bg-background transition-colors text-center cursor-default"
+                                        />
+                                    </div>
+                                    <Input
                                         type="time"
                                         value={dueTime}
                                         onChange={(e) => setDueTime(e.target.value)}
-                                        className="w-20 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                        className="w-24 h-8 text-sm"
                                     />
                                 </div>
                             )}
                         </div>
 
                         {/* Reminder */}
-                        <div className="space-y-2">
-                            <label className="text-sm font-medium">Definir lembrete</label>
+                        <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                Definir lembrete
+                            </Label>
                             <Select value={reminder} onValueChange={setReminder}>
-                                <SelectTrigger className="h-8">
-                                    <SelectValue placeholder="Selecione..." />
+                                <SelectTrigger className="h-8 w-full text-sm">
+                                    <SelectValue placeholder="Sem lembrete" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="none">Nenhum</SelectItem>
                                     <SelectItem value="at_time">Na hora da entrega</SelectItem>
-                                    <SelectItem value="15_min">15 minutos antes</SelectItem>
-                                    <SelectItem value="1_hour">1 hora antes</SelectItem>
-                                    <SelectItem value="1_day">1 dia antes</SelectItem>
+                                    <SelectItem value="5_min_before">5 minutos antes</SelectItem>
+                                    <SelectItem value="10_min_before">10 minutos antes</SelectItem>
+                                    <SelectItem value="15_min_before">15 minutos antes</SelectItem>
+                                    <SelectItem value="1_hour_before">1 hora antes</SelectItem>
+                                    <SelectItem value="2_hours_before">2 horas antes</SelectItem>
+                                    <SelectItem value="1_day_before">1 dia antes</SelectItem>
+                                    <SelectItem value="2_days_before">2 dias antes</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
 
-                        <div className="flex flex-col gap-2 pt-2">
+                        <div className="pt-2 flex flex-col gap-2">
                             <Button onClick={handleSave} disabled={loading} className="w-full">
+                                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Salvar
                             </Button>
-                            <Button
-                                variant="ghost"
-                                onClick={handleRemove}
-                                disabled={loading}
-                                className="w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                            >
-                                Remover datas
+                            <Button onClick={handleRemove} variant="ghost" disabled={loading} className="w-full h-8 text-xs text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20">
+                                Remover
                             </Button>
                         </div>
                     </div>
@@ -242,4 +267,4 @@ export function DatePicker({
             </PopoverContent>
         </Popover>
     )
-}
+} 

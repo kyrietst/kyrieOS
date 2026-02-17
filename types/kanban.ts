@@ -61,7 +61,20 @@ export interface KanbanCard {
         is_done_column: boolean;
     };
     // Optional joined data
+    start_date?: string | null;
+    end_date?: string | null;
     due_date?: string | null;
+    assigned_to_user?: {
+        id: string;
+        full_name: string;
+        avatar_url: string | null;
+        email: string;
+    } | null;
+    assignments?: {
+        id: string;
+        user_id: string;
+        card_id: string;
+    }[];
     checklists?: KanbanChecklist[];
     comments?: KanbanCardComment[];
     attachments?: KanbanAttachment[];

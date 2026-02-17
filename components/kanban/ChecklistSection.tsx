@@ -12,6 +12,7 @@ import {
     Loader2
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { CardActionButton } from './CardActionButton'
 import { toast } from 'sonner'
 import type { KanbanChecklist, KanbanChecklistItem } from '@/types/kanban'
 import {
@@ -75,15 +76,13 @@ export function ChecklistSection({ cardId, organizationId, checklists, onUpdate 
                     </Button>
                 </div>
             ) : (
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() => setIsCreating(true)}
-                >
-                    <Plus className="w-3.5 h-3.5 mr-1.5" />
-                    Adicionar checklist
-                </Button>
+                <div className="flex justify-start">
+                    <CardActionButton
+                        icon={Plus}
+                        label="Adicionar checklist"
+                        onClick={() => setIsCreating(true)}
+                    />
+                </div>
             )}
         </div>
     )
