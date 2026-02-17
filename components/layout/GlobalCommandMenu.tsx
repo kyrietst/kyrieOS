@@ -26,6 +26,15 @@ export function GlobalCommandMenu() {
                 e.preventDefault();
                 setOpen((open) => !open);
             }
+
+            // Shortcut 'f' for Search (unless typing)
+            if (e.key.toLowerCase() === 'f') {
+                const target = e.target as HTMLElement;
+                if (['INPUT', 'TEXTAREA'].includes(target.tagName) || target.isContentEditable) return;
+
+                e.preventDefault();
+                setOpen(true);
+            }
         };
 
         document.addEventListener('keydown', down);

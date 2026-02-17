@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/utils/supabase/client'
 import {
@@ -25,6 +25,7 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable'
 import { createPortal } from 'react-dom'
+import { defaultDropAnimationSideEffects } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -40,12 +41,14 @@ import { cn } from '@/lib/utils'
 import { triggerConfetti } from '@/utils/confetti'
 import { Globe, Search } from 'lucide-react'
 import { useKanbanBackground } from '@/hooks/use-kanban-background'
+import { useGlobalShortcuts } from '@/hooks/use-keyboard-shortcuts'
 import { KanbanPageOptions } from './KanbanPageOptions'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useHeaderActions } from '@/contexts/HeaderActionsContext'
 import KanbanColumnHeader from './KanbanColumnHeader'
 import { updateColumnName } from '@/actions/kanban'
+import { KanbanSkeleton } from './KanbanSkeleton'
 
 // --- Internal Components for Sortable ---
 
@@ -90,7 +93,7 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
       animate={{ opacity: isDragging ? 0.3 : 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{
-        layout: { type: "spring", stiffness: 600, damping: 30 },
+        layout: { type: "spring", stiffness: 350, damping: 25, mass: 1 },
         opacity: { duration: 0.2 }
       }}
       {...attributes}
@@ -309,6 +312,19 @@ export default function KanbanBoard({
   ), [extraActions, organizationId])
 
   useHeaderActions(headerActions)
+
+  // Shortcuts
+  const handleNewCardShortcut = useCallback(() => {
+    if (columns.length > 0) {
+      handleAddCard(columns[0].id)
+    }
+  }, [columns])
+
+  const globalShortcuts = useMemo(() => ({
+    onNewCard: handleNewCardShortcut
+  }), [handleNewCardShortcut])
+
+  useGlobalShortcuts(globalShortcuts)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [activeColumnId, setActiveColumnId] = useState('')
@@ -587,6 +603,10 @@ export default function KanbanBoard({
     }
   }
 
+  if (!mounted) {
+    return <KanbanSkeleton />
+  }
+
   return (
     <div className={cn("flex flex-col h-full w-full overflow-hidden transition-all duration-500 ease-in-out", currentPreset.className)}>
       {/* Board Header - Removed, moved to Header via useHeaderActions */}
@@ -634,8 +654,15 @@ export default function KanbanBoard({
           {/* Drag Overlay */}
           {mounted && createPortal(
             <DragOverlay zIndex={1000} dropAnimation={{
-              duration: 400,
-              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+              sideEffects: defaultDropAnimationSideEffects({
+                styles: {
+                  active: {
+                    opacity: '0.4',
+                  },
+                },
+              }),
+              duration: 250,
+              easing: 'cubic-bezier(0.25, 1, 0.5, 1)',
             }}>
               {activeDragCard ? (
                 <motion.div

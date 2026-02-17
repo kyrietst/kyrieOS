@@ -162,10 +162,18 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
         }
     }
 
+    const handlePin = async () => {
+        if (!onPinToggle) return
+        // Optimistic update handled by parent or we just call the toggle
+        onPinToggle(validCardId, !card.is_pinned)
+        toast.success(card.is_pinned ? "Cartão desafixado" : "Cartão fixado")
+    }
+
     useKeyboardShortcuts(isHovered, {
         onAssignSelf: handleSelfAssign,
         onArchive: handleArchive,
-        onEscape: () => setIsEditingTitle(false)
+        onEscape: () => setIsEditingTitle(false),
+        onPin: handlePin
     }, !isEditingTitle)
 
     const isCompletedColumn = card.kanban_columns?.is_done_column || card.is_done_column
@@ -187,6 +195,8 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                     initial={{ opacity: 0, scale: 1 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
+                    whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
+                    className="h-full"
                 >
                     <Card
                         className={cn(
@@ -289,6 +299,9 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                             <motion.button
                                                 initial={{ opacity: 0, scale: 0.8 }}
                                                 animate={{ opacity: 1, scale: 1 }}
+                                                whileTap={{ scale: 0.8 }}
+                                                whileHover={{ scale: 1.1 }}
+                                                transition={{ type: "spring", stiffness: 400, damping: 17 }}
                                                 className={cn(
                                                     "shrink-0 transition-all hover:scale-110 active:scale-95",
                                                     card.completed_at ? "text-emerald-500" : (isFullCover ? (textTheme === 'light' ? "text-white/80 hover:text-white" : "text-zinc-900/80 hover:text-zinc-900") : "text-muted-foreground/40 hover:text-primary")
