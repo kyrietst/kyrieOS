@@ -153,21 +153,8 @@ function SortableColumn({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const isMaster = organizationId === 'master'
-
   // Filter cards for this column
-  const filteredCards = cards.filter(c => {
-    if (isMaster) {
-      let colStatus = column.status;
-      if (!colStatus) {
-        if (column.position === 0) colStatus = 'todo';
-        else if (column.position === 1) colStatus = 'doing';
-        else if (column.is_done_column || column.position === 2) colStatus = 'done';
-      }
-      return c.master_status === colStatus;
-    }
-    return c.column_id === column.id
-  })
+  const filteredCards = cards.filter(c => c.column_id === column.id)
 
   // Sort: pinned cards first, then by updated_at
   const columnCards = [...filteredCards].sort((a, b) => {
@@ -236,7 +223,7 @@ function SortableColumn({
         <KanbanAddCard
           columnId={column.id}
           organizationId={organizationId}
-          isMaster={isMaster}
+          isMaster={organizationId === 'master'}
           columnPosition={column.position}
         />
       </div>
@@ -422,9 +409,9 @@ export default function KanbanBoard({
             if (targetColumn) {
               let colStatus = targetColumn.status;
               if (!colStatus) {
-                if (targetColumn.position === 0) colStatus = 'todo';
-                else if (targetColumn.position === 1) colStatus = 'doing';
-                else if (targetColumn.is_done_column || targetColumn.position === 2) colStatus = 'done';
+                if (targetColumn.is_done_column) colStatus = 'done';
+                else if (targetColumn.position === 0) colStatus = 'todo';
+                else colStatus = 'doing';
               }
               updatedItem.master_status = colStatus || 'todo';
             }
@@ -440,62 +427,64 @@ export default function KanbanBoard({
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
-    setActiveDragCard(null)
 
-    if (!over) return
+    // Safety Log
+    console.log('DragEnd:', { active: active.id, over: over?.id })
 
-    const activeId = active.id as string
-    const overId = over.id as string
-
-    if (activeId === overId) return
-
-    const isActiveColumn = active.data.current?.type === 'Column'
-    const isOverColumn = over.data.current?.type === 'Column'
-
-    // Handle Column drag-end (persist reorder)
-    if (isActiveColumn && isOverColumn) {
-      const oldIndex = columns.findIndex(c => c.id === activeId)
-      const newIndex = columns.findIndex(c => c.id === overId)
-
-      if (oldIndex !== newIndex) {
-        const reorderedColumns = arrayMove(columns, oldIndex, newIndex)
-        const updatedPositions = reorderedColumns.map((col, index) => ({
-          id: col.id,
-          position: index
-        }))
-
-        try {
-          await reorderColumns(updatedPositions)
-          toast.success("Coluna reordenada")
-        } catch (error) {
-          console.error("Failed to reorder columns", error)
-          toast.error("Erro ao reordenar coluna")
-          setColumns(initialColumns) // Revert
-        }
-      }
-      return
-    }
-
-    // Handle Card drag
-    const isMaster = organizationId === 'master'
-    const activeCard = cards.find(c => (c.id || c.card_id) === activeId)
-    if (!activeCard) return
-
-    const isOverTask = over.data.current?.type === 'Card'
-
-    let targetColumnId = isMaster ? activeCard.column_id : activeCard.column_id
-
-    if (isOverTask) {
-      const overCard = cards.find(c => (c.id || c.card_id) === overId)
-      if (overCard) targetColumnId = overCard.column_id
-    } else if (isOverColumn) {
-      targetColumnId = String(overId)
-    }
-
-    const originalColumnId = activeCard.column_id
-
-    // Determine if moving to different column or same column reorder
     try {
+      if (!over) return
+
+      const activeId = active.id as string
+      const overId = over.id as string
+
+      if (activeId === overId) return
+
+      const isActiveColumn = active.data.current?.type === 'Column'
+      const isOverColumn = over.data.current?.type === 'Column'
+
+      // Handle Column drag-end (persist reorder)
+      if (isActiveColumn && isOverColumn) {
+        const oldIndex = columns.findIndex(c => c.id === activeId)
+        const newIndex = columns.findIndex(c => c.id === overId)
+
+        if (oldIndex !== newIndex) {
+          const reorderedColumns = arrayMove(columns, oldIndex, newIndex)
+          const updatedPositions = reorderedColumns.map((col, index) => ({
+            id: col.id,
+            position: index
+          }))
+
+          try {
+            await reorderColumns(updatedPositions)
+            toast.success("Coluna reordenada")
+          } catch (error) {
+            console.error("Failed to reorder columns", error)
+            toast.error("Erro ao reordenar coluna")
+            setColumns(initialColumns) // Revert
+          }
+        }
+        return
+      }
+
+      // Handle Card drag
+      const isMaster = organizationId === 'master'
+      const activeCard = cards.find(c => (c.id || c.card_id) === activeId)
+      if (!activeCard) return
+
+      const isOverTask = over.data.current?.type === 'Card'
+
+      let targetColumnId = isMaster ? activeCard.column_id : activeCard.column_id
+
+      if (isOverTask) {
+        const overCard = cards.find(c => (c.id || c.card_id) === overId)
+        if (overCard) targetColumnId = overCard.column_id
+      } else if (isOverColumn) {
+        targetColumnId = String(overId)
+      }
+
+      const originalColumnId = activeCard.column_id
+
+      // Determine if moving to different column or same column reorder
       if (targetColumnId !== originalColumnId) {
         // Optimistic State Update for Master View (already handled in handleDragOver, 
         // but this ensures consistency if dragOver didn't trigger perfectly)
@@ -503,9 +492,9 @@ export default function KanbanBoard({
           const targetCol = columns.find(c => c.id === targetColumnId)
           let colStatus = targetCol?.status;
           if (targetCol && !colStatus) {
-            if (targetCol.position === 0) colStatus = 'todo';
-            else if (targetCol.position === 1) colStatus = 'doing';
-            else if (targetCol.is_done_column || targetCol.position === 2) colStatus = 'done';
+            if (targetCol.is_done_column) colStatus = 'done';
+            else if (targetCol.position === 0) colStatus = 'todo';
+            else colStatus = 'doing';
           }
 
           setCards(prev => prev.map(c =>
@@ -569,6 +558,8 @@ export default function KanbanBoard({
       toast.error("Erro ao mover cartão")
       // Revert state
       setCards(initialCards)
+    } finally {
+      setActiveDragCard(null)
     }
   }
 

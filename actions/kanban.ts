@@ -7,20 +7,15 @@ import { revalidatePath } from 'next/cache'
 export async function getKanbanColumns(organizationId?: string) {
   const supabase = await createClient()
 
-  let query = supabase
+  // UNIFIED KANBAN: Always fetch Global Columns (organization_id IS NULL)
+  // We ignore the organizationId parameter for filtering columns, 
+  // because all organizations now share the same Single Global Board structure.
+
+  const { data, error } = await supabase
     .from('kanban_columns')
     .select('*')
+    .is('organization_id', null)
     .order('position')
-
-  if (organizationId && organizationId !== 'master' && organizationId !== 'global') {
-    // Visão Cliente: Apenas colunas do cliente
-    query = query.eq('organization_id', organizationId)
-  } else {
-    // Visão Master: Apenas colunas globais (IS NULL)
-    query = query.is('organization_id', null)
-  }
-
-  const { data, error } = await query
 
   if (error) throw error
   return data || []
@@ -29,11 +24,15 @@ export async function getKanbanColumns(organizationId?: string) {
 export async function createKanbanColumn(organizationId: string, name: string) {
   const supabase = await createClient()
 
-  // Get max position
+  // UNIFIED KANBAN: Create Global Column ONLY
+  // Even if called from a specific org context, we create a Global Column.
+  // Realistically, this should be restricted to Admins via RLS.
+
+  // Get max position for Global Columns
   const { data: maxPosData } = await supabase
     .from('kanban_columns')
     .select('position')
-    .eq('organization_id', organizationId)
+    .is('organization_id', null)
     .order('position', { ascending: false })
     .limit(1)
 
@@ -41,39 +40,53 @@ export async function createKanbanColumn(organizationId: string, name: string) {
 
   const { data, error } = await supabase
     .from('kanban_columns')
-    .insert({ organization_id: organizationId, name, position: nextPos })
+    .insert({
+      organization_id: null, // Force Global
+      name,
+      position: nextPos
+    })
     .select()
     .single()
 
   if (error) throw error
-  revalidatePath('/kyrie') // Revalidate everything under kyrie to be safe, or targeted.
-  // Targeted paths:
+  revalidatePath('/kyrie')
   revalidatePath('/kyrie/workspace/kanban')
   revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   return data
 }
 
-// Alias for UX consistency (and Global Create Logic)
+// Alias for UX consistency
 export async function createColumn(organizationId: string, name: string, position?: number) {
-  // Legacy logic for "master" global creation removed as we now have true Global Columns.
-  // If we ever need to create a column specifically for "master" context (which shouldn't happen for columns, only cards),
-  // we would handle it here. For now, it's just a pass-through.
-
-  // Note: Creating a TRUE global column (org_id=NULL) requires admin rights and should probably be a separate admin function,
-  // or we handle `organizationId === 'global'` specifically.
-  // But for standard client creation:
   return createKanbanColumn(organizationId, name)
 }
 
 // Cards
-export async function getKanbanCards(organizationId: string) {
+export async function getKanbanCards(organizationId: string | null = null) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('kanban_cards')
-    .select('*')
-    .eq('organization_id', organizationId)
+    .select(`
+      *,
+      kanban_card_labels (
+        kanban_labels (
+          name,
+          color
+        )
+      ),
+      organizations (
+        name,
+        slug,
+        logo_url
+      )
+    `)
     .eq('is_archived', false)
     .order('position')
+
+  if (organizationId) {
+    query = query.eq('organization_id', organizationId)
+  }
+
+  const { data, error } = await query
 
   if (error) throw error
   return data
@@ -123,19 +136,16 @@ export async function reorderCardsInColumn(cards: { id: string, position: number
 export async function toggleCardCompletion(cardId: string, currentColumnId: string, organizationId: string) {
   const supabase = await createClient()
 
-  // 1. Get all columns for this org to identify "Todo" and "Done"
+  // 1. Get Global Columns (Unified)
   const { data: cols } = await supabase
     .from('kanban_columns')
     .select('*')
-    .eq('organization_id', organizationId)
+    .is('organization_id', null)
     .order('position')
 
   if (!cols) throw new Error('Columns not found')
 
   // Naively assume first is Todo, last is Done if not flagged. 
-  // Ideally we check for a flag 'is_done_column'.
-  // Let's assume the user wants to toggle between the *current* column and the *Done* column (or *Todo* if already Done).
-
   const doneCol = cols.find(c => c.is_done_column) || cols[cols.length - 1]
   const todoCol = cols[0]
 
@@ -145,7 +155,6 @@ export async function toggleCardCompletion(cardId: string, currentColumnId: stri
   const targetColId = isCurrentlyDone ? todoCol.id : doneCol.id
 
   // 2. Move the card
-  // We append to the end of the target column (position = 9999 or count + 1)
   await moveCard(cardId, targetColId, 9999)
 }
 
@@ -170,28 +179,28 @@ export async function createCardFromMaster(
 ) {
   const supabase = await createClient()
 
-  // 1. Find the real column ID in the target org at the target position
-  // We try to match position exactly. 
-  // If not found (e.g. standard todo/doing/done mapping might be fuzzy), we fallback to logic.
+  // UNIFIED KANBAN: 
+  // We need to find the GLOBAL column that corresponds to the `targetPosition` (0, 1, 2...).
+  // Master View columns are Global Columns.
 
   let { data: column } = await supabase
     .from('kanban_columns')
     .select('id')
-    .eq('organization_id', targetOrganizationId)
+    .is('organization_id', null) // Global ONLY
     .eq('position', targetPosition)
     .single()
 
-  // Fallback: If exact position not found, try to find "Todo" if position was 0, or just the first column
+  // Fallback
   if (!column) {
     const { data: firstCol } = await supabase
       .from('kanban_columns')
       .select('id')
-      .eq('organization_id', targetOrganizationId)
+      .is('organization_id', null)
       .order('position')
       .limit(1)
       .single()
 
-    if (!firstCol) throw new Error('Target organization has no columns')
+    if (!firstCol) throw new Error('System has no global columns')
     column = firstCol
   }
 
@@ -206,47 +215,27 @@ export async function createCardFromMaster(
 
 /**
  * Handles moving a card in the Master View.
- * Translates a Global Column ID to the corresponding Local Column ID for the card's organization.
+ * UNIFIED KANBAN: Direct move. No mapping needed.
  */
 export async function moveCardToMasterStatus(cardId: string, targetGlobalColumnId: string) {
   const supabase = await createClient()
 
-  // 1. Get card details to find its organization
+  // 1. Verify card exists (basic access control)
+  // We don't strictly need to check organization match anymore because 
+  // the column IS global. We just need to ensure the user can update this card.
+
   const { data: card, error: cardError } = await supabase
     .from('kanban_cards')
-    .select('organization_id')
+    .select('id, organization_id')
     .eq('id', cardId)
     .single()
 
   if (cardError || !card) throw new Error('Card not found or access denied')
 
-  // 2. Get global column details to find its name
-  const { data: globalCol, error: globalError } = await supabase
-    .from('kanban_columns')
-    .select('name')
-    .eq('id', targetGlobalColumnId)
-    .is('organization_id', null)
-    .single()
-
-  if (globalError || !globalCol) throw new Error('Target master column not found')
-
-  // 3. Find matching local column for that organization
-  const { data: localCol, error: localError } = await supabase
-    .from('kanban_columns')
-    .select('id')
-    .eq('organization_id', card.organization_id)
-    .eq('name', globalCol.name)
-    .single()
-
-  if (localError || !localCol) {
-    console.error(`Could not find matching local column for ${globalCol.name} in org ${card.organization_id}`)
-    throw new Error('Coluna correspondente não encontrada no cliente')
-  }
-
-  // 4. Update the card
+  // 2. Update the card
   const { error: updateError } = await supabase
     .from('kanban_cards')
-    .update({ column_id: localCol.id, position: 9999 })
+    .update({ column_id: targetGlobalColumnId, position: 9999 })
     .eq('id', cardId)
 
   if (updateError) throw updateError

@@ -265,7 +265,17 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                             isFullCover && "min-h-[150px] justify-end !pb-1.5"
                         )}>
                             {/* Header: Title */}
-                            <div className="flex items-start justify-between gap-1.5">
+                            {/* Organization Badge (Master View) */}
+                            {isMasterView && card.organizations && (
+                                <div className="flex items-center gap-1 bg-muted/50 px-1.5 py-0.5 rounded text-[10px] text-muted-foreground w-fit mb-1 border border-border/50">
+                                    {card.organizations.logo_url && (
+                                        <img src={card.organizations.logo_url} alt="" className="w-3 h-3 rounded-full object-cover" />
+                                    )}
+                                    <span className="truncate max-w-[100px]">{card.organizations.name}</span>
+                                </div>
+                            )}
+
+                            <div className="flex items-start justify-between gap-2">
                                 {isEditingTitle ? (
                                     <div className="w-full" onClick={(e) => e.stopPropagation()}>
                                         <Textarea
