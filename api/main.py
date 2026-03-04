@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 
@@ -35,19 +36,25 @@ def health_check():
 
 from api.graphs.report_generator import report_generator_app
 
+
+class ReportRequest(BaseModel):
+    client_slug: str
+    week_start: str | None = None
+    week_end: str | None = None
+
+
 @app.post("/api/ai/generate-report")
-async def generate_report(payload: dict):
+async def generate_report(payload: ReportRequest):
     """
     Trigger the Report Generator LangGraph Agent
-    Payload: { "client_slug": "...", "week_start": "...", "week_end": "..." }
     """
     # Map input to ReportState
     initial_state = {
-        "client_slug": payload.get("client_slug") or payload.get("client_id", "adega-anitas"), # Support both for backward compat, default to seed
+        "client_slug": payload.client_slug,
         "organization_id": None,
         "organization_name": None,
-        "week_start": payload.get("week_start", "2026-01-01"),
-        "week_end": payload.get("week_end", "2026-01-07"),
+        "week_start": payload.week_start or "2026-01-01",
+        "week_end": payload.week_end or "2026-01-07",
         "time_data": [],
         "metrics_data": {},
         "tasks_data": [],

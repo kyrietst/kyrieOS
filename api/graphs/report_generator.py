@@ -5,7 +5,6 @@ from datetime import datetime
 from supabase import create_client, Client
 from langgraph.graph import StateGraph, END
 from groq import Groq
-import google.generativeai as genai
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -22,9 +21,6 @@ if not SUPABASE_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Setup Gemini
-# Configure Gemini Native SDK
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 # --- State Definition ---
 class ReportState(TypedDict):
@@ -137,11 +133,11 @@ def gather_metrics_data(state: ReportState) -> Dict:
         return {"errors": [str(e)]}
 
 def generate_report_content(state: ReportState) -> Dict:
-    """Uses Gemini to generate Markdown report"""
+    """Uses Groq LLM to generate Markdown report"""
     if state.get("errors"):
         return {"report_output": "Falha na geração devido a erros anteriores."}
         
-    print(f"DEBUG: Generating report using Gemini for {state['organization_name']}")
+    print(f"DEBUG: Generating report using Groq for {state['organization_name']}")
     
     # Prepare Data Context
     time_summary = ""
@@ -250,7 +246,7 @@ def save_report(state: ReportState) -> Dict:
                 "completed_tasks": len(state['tasks_data']),
                 "business_metrics": state['metrics_data']
             },
-            "ai_model_used": "gemini-1.5-flash"
+            "ai_model_used": "llama-3.3-70b-versatile"
         }
         
         rep_resp = supabase.table("reports").insert(report_data).execute()

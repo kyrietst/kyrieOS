@@ -1,7 +1,6 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
-import { MasterKanbanCard } from '@/types/kanban'
 
 /**
  * Fetches all cards with calculated liquid capacity (burn-down) from the strategic view.
@@ -34,7 +33,7 @@ export async function updateCardStrategicFields(cardId: string, updates: {
     const supabase = await createClient()
 
     const { data, error } = await supabase
-        .from('kanban_cards' as any)
+        .from('kanban_cards')
         .update(updates)
         .eq('id', cardId)
         .select()

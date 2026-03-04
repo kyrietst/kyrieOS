@@ -21,21 +21,23 @@ export async function sendMessage(conversationId: string | undefined, message: s
   }
 
   // Save user message
-  await supabase.from('ai_messages').insert({
+  const { error: userMsgError } = await supabase.from('ai_messages').insert({
     conversation_id: convId,
     role: 'user',
     content: message
   })
+  if (userMsgError) throw userMsgError
 
   // Mock AI response for now (Integration would go here)
   const aiResponse = `This is a mock response to: "${message}". RAG integration coming soon.`
-  
+
   // Save assistant message
-  await supabase.from('ai_messages').insert({
+  const { error: assistantMsgError } = await supabase.from('ai_messages').insert({
     conversation_id: convId,
     role: 'assistant',
     content: aiResponse
   })
+  if (assistantMsgError) throw assistantMsgError
 
   return { conversationId: convId, message: aiResponse }
 }
@@ -46,7 +48,7 @@ export async function getConversations() {
     .from('ai_conversations')
     .select('*')
     .order('updated_at', { ascending: false })
-  
+
   if (error) throw error
   return data
 }
@@ -58,7 +60,7 @@ export async function getMessages(conversationId: string) {
     .select('*')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true })
-    
+
   if (error) throw error
   return data
 }

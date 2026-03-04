@@ -15,7 +15,8 @@ export function GenerateReportButton({ clientSlug = 'adega-anitas' }: GenerateRe
   const handleGenerate = async () => {
     setIsLoading(true)
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL
+      if (!apiUrl) throw new Error('NEXT_PUBLIC_API_URL is not configured')
       console.log('🔍 Tentando gerar relatório em:', `${apiUrl}/api/ai/generate-report`)
 
       const response = await fetch(`${apiUrl}/api/ai/generate-report`, {
@@ -25,7 +26,7 @@ export function GenerateReportButton({ clientSlug = 'adega-anitas' }: GenerateRe
         },
         body: JSON.stringify({
           client_slug: clientSlug,
-          week_end: new Date().toISOString().split('T')[0] 
+          week_end: new Date().toISOString().split('T')[0]
         }),
       })
 
@@ -33,9 +34,9 @@ export function GenerateReportButton({ clientSlug = 'adega-anitas' }: GenerateRe
       try {
         const data = JSON.parse(text)
         if (!response.ok || !data.success) {
-           throw new Error(data.errors?.[0] || 'Falha na geração')
+          throw new Error(data.errors?.[0] || 'Falha na geração')
         }
-        
+
         toast.success("Relatório Gerado!", {
           description: "O relatório foi salvo e está disponível no portal do cliente."
         })
@@ -55,8 +56,8 @@ export function GenerateReportButton({ clientSlug = 'adega-anitas' }: GenerateRe
   }
 
   return (
-    <Button 
-      onClick={handleGenerate} 
+    <Button
+      onClick={handleGenerate}
       disabled={isLoading}
       className="bg-purple-600 hover:bg-purple-700"
     >
