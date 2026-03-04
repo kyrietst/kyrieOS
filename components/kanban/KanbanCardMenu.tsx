@@ -132,22 +132,6 @@ export function KanbanCardMenu({ card, onOpen, children, onPinToggle }: KanbanCa
 
                 <ContextMenuSeparator />
 
-                <ContextMenuItem onClick={handleTogglePin}>
-                    {card.is_pinned ? (
-                        <>
-                            <PinOff className="mr-2 h-4 w-4" />
-                            Desafixar
-                        </>
-                    ) : (
-                        <>
-                            <Pin className="mr-2 h-4 w-4" />
-                            Fixar no Topo
-                        </>
-                    )}
-                </ContextMenuItem>
-
-                <ContextMenuSeparator />
-
                 <ContextMenuSub>
                     <ContextMenuSubTrigger>
                         <Tag className="mr-2 h-4 w-4" />

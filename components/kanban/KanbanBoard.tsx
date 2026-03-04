@@ -428,9 +428,6 @@ export default function KanbanBoard({
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
 
-    // Safety Log
-    console.log('DragEnd:', { active: active.id, over: over?.id })
-
     try {
       if (!over) return
 

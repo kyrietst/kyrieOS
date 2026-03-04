@@ -865,6 +865,7 @@ export async function updateCardDates(
     throw new Error('Failed to update card dates')
   }
 
-  revalidatePath('/dashboard/kanban')
+  revalidatePath('/kyrie/workspace/kanban')
+  revalidatePath('/kyrie/clients/[slug]/kanban', 'page')
   return { success: true }
 }
