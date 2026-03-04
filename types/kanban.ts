@@ -26,6 +26,10 @@ export interface KanbanCard {
     confidence?: number;
     effort?: number;
     ice_score?: number; // Generated column
+    ice_impact?: number;
+    ice_confidence?: number;
+    ice_ease?: number;
+    ice_effort?: number;
     // Labels (normalized)
     kanban_card_labels?: Array<{
         kanban_labels: {
@@ -37,17 +41,20 @@ export interface KanbanCard {
     labels?: string[]; // DEPRECATED - mantido para compatibilidade
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     estimated_minutes?: number;
-    ice_ease?: number;
     is_archived?: boolean;
     assigned_to?: string | null;
+    project_id?: string | null;
+    created_by?: string | null;
     created_at?: string;
     updated_at?: string;
+    completed_at?: string | null;
     // Cover fields
     cover_type?: 'color' | 'image' | null;
     cover_value?: string | null;
     cover_mode?: 'header' | 'full';
     cover_size?: 'small' | 'large';
     cover_text_theme?: 'light' | 'dark';
+    cover_color?: string | null; // Legacy cover color
     // Extended for Master View
     organization_name?: string;
     organization_slug?: string;
@@ -64,6 +71,8 @@ export interface KanbanCard {
     start_date?: string | null;
     end_date?: string | null;
     due_date?: string | null;
+    is_due_date_completed?: boolean | null;
+    reminder_at?: string | null;
     assigned_to_user?: {
         id: string;
         full_name: string;
@@ -78,6 +87,28 @@ export interface KanbanCard {
     checklists?: KanbanChecklist[];
     comments?: KanbanCardComment[];
     attachments?: KanbanAttachment[];
+    // Join data from Supabase relations
+    organizations?: {
+        id?: string;
+        name: string;
+        slug?: string;
+        logo_url?: string | null;
+    };
+    kanban_card_members?: Array<{
+        user_id: string;
+        profiles?: {
+            id: string;
+            full_name: string | null;
+            avatar_url: string | null;
+        };
+    }>;
+    kanban_checklists?: KanbanChecklist[];
+    // Master view fallback ID and status
+    card_id?: string;
+    master_status?: 'todo' | 'doing' | 'done' | 'backlog';
+    // DnD animation state (client-side only)
+    justDropped?: boolean;
+    trello_card_id?: string | null;
 }
 
 // ==================== CHECKLIST TYPES ====================
@@ -199,4 +230,58 @@ export interface MasterKanbanResponse {
     total: number;
     page: number;
     pageSize: number;
+}
+
+// === Shared types for Kanban components ===
+
+/** Union type for cards that can be either client-specific or master workspace */
+export type KanbanCardData = KanbanCard | MasterKanbanCard;
+
+/** Label join from kanban_card_labels → kanban_labels */
+export interface KanbanCardLabelJoin {
+    kanban_labels: {
+        id: string;
+        name: string;
+        color: string;
+    };
+}
+
+/** Member join from kanban_card_members → profiles */
+export interface KanbanCardMemberJoin {
+    profiles: {
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+    };
+}
+
+/** Comment with profile join */
+export interface KanbanCardCommentWithProfile {
+    id: string;
+    card_id: string;
+    user_id: string;
+    content: string;
+    created_at: string;
+    organization_id: string;
+    profiles: {
+        full_name: string | null;
+        avatar_url: string | null;
+    } | null;
+}
+
+/** Input type for creating a new card */
+export interface CreateKanbanCardInput {
+    organization_id: string;
+    column_id: string;
+    title: string;
+    position?: number;
+    project_id?: string | null;
+    description?: string | null;
+}
+
+/** Input type for updating card dates */
+export interface UpdateCardDatesInput {
+    start_date?: string | null;
+    due_date?: string | null;
+    reminder_at?: string | null;
 }

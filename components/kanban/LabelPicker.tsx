@@ -119,8 +119,8 @@ export function LabelPicker({ cardId, organizationId, selectedLabelIds = [], onL
 
             // Auto-select
             handleToggleLabel(newLabel.id)
-        } catch (error: any) {
-            if (error.message?.includes('duplicate')) {
+        } catch (error: unknown) {
+            if (error instanceof Error && error.message?.includes('duplicate')) {
                 toast.error('Já existe uma etiqueta com esse nome')
             } else {
                 toast.error('Erro ao criar etiqueta')
@@ -131,7 +131,7 @@ export function LabelPicker({ cardId, organizationId, selectedLabelIds = [], onL
     }
 
     // Helper to render label pill
-    const renderLabelPill = (label: any) => {
+    const renderLabelPill = (label: { id: string; name: string; color: string }) => {
         const colorClass = COLOR_MAP[label.color]
         const isHex = label.color?.startsWith('#')
 

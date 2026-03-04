@@ -2,6 +2,7 @@
 
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
+import type { CreateKanbanCardInput } from '@/types/kanban'
 
 // Columns
 export async function getKanbanColumns(organizationId?: string) {
@@ -92,7 +93,7 @@ export async function getKanbanCards(organizationId: string | null = null) {
   return data
 }
 
-export async function createKanbanCard(cardData: any) {
+export async function createKanbanCard(cardData: CreateKanbanCardInput) {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('kanban_cards')
@@ -600,10 +601,12 @@ export async function getCardChecklists(cardId: string) {
   if (error) throw error
 
   // Sort items by position within each checklist
-  return (data || []).map((cl: any) => ({
-    ...cl,
-    items: (cl.items || []).sort((a: any, b: any) => a.position - b.position)
-  }))
+  return (data || []).map((cl) => {
+    const sortedItems = [...(cl.items || [])].sort(
+      (a: { position: number }, b: { position: number }) => a.position - b.position
+    )
+    return { ...cl, items: sortedItems }
+  })
 }
 
 // ==================== COMMENT ACTIONS ====================
@@ -705,10 +708,12 @@ export async function uploadCardAttachment(formData: FormData) {
 
   if (uploadError) throw uploadError
 
-  // Get public URL
-  const { data: urlData } = supabase.storage
+  // Get signed URL (private bucket)
+  const { data: urlData, error: urlError } = await supabase.storage
     .from('kanban-attachments')
-    .getPublicUrl(filePath)
+    .createSignedUrl(filePath, 60 * 60 * 24 * 365) // 1 year
+
+  if (urlError) throw urlError
 
   // Insert metadata
   const { data, error } = await supabase
@@ -718,7 +723,7 @@ export async function uploadCardAttachment(formData: FormData) {
       organization_id: organizationId,
       user_id: user.id,
       file_name: file.name,
-      file_url: urlData.publicUrl,
+      file_url: urlData.signedUrl,
       file_type: file.type,
       file_size: file.size
     })
@@ -799,7 +804,7 @@ export async function getCardMembers(cardId: string) {
     console.error('Error in getCardMembers:', error)
     return []
   }
-  return data.map((item: any) => item.profiles)
+  return data
 }
 
 export async function addCardMember(cardId: string, userId: string, organizationId: string) {
@@ -850,7 +855,7 @@ export async function updateCardDates(
 ) {
   const supabase = await createClient()
 
-  const updates: any = {}
+  const updates: Record<string, string | null> = {}
   if (dates.startDate !== undefined) updates.start_date = dates.startDate
   if (dates.dueDate !== undefined) updates.due_date = dates.dueDate
   if (dates.reminder !== undefined) updates.reminder_at = dates.reminder

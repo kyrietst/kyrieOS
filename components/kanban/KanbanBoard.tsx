@@ -35,7 +35,7 @@ import KanbanAddCard from './KanbanAddCard'
 import KanbanCard from './KanbanCard'
 import { moveCard, reorderCardsInColumn, reorderColumns, moveCardToMasterStatus } from '@/actions/kanban'
 import { getUserActiveTimer } from '@/actions/time-tracking'
-import { TimeEntry, KanbanColumn } from '@/types/kanban'
+import { TimeEntry, KanbanColumn, KanbanCard as KanbanCardType } from '@/types/kanban'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { triggerConfetti } from '@/utils/confetti'
@@ -55,7 +55,7 @@ import { KanbanSkeleton } from './KanbanSkeleton'
 // --- Internal Components for Sortable ---
 
 function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdate, onPinToggle }: {
-  card: any,
+  card: KanbanCardType,
   organizationId: string,
   onClick: () => void,
   activeTimer: TimeEntry | null,
@@ -70,7 +70,7 @@ function SortableCard({ card, organizationId, onClick, activeTimer, onTimerUpdat
     transition,
     isDragging
   } = useSortable({
-    id: card.id || card.card_id,
+    id: card.id,
     data: {
       type: 'Card',
       card,
@@ -124,7 +124,7 @@ function SortableColumn({
   onPinToggle
 }: {
   column: KanbanColumn,
-  cards: any[],
+  cards: KanbanCardType[],
   organizationId: string,
   onAddCard: (colId: string) => void,
   activeTimer: TimeEntry | null,
@@ -201,7 +201,7 @@ function SortableColumn({
 
       {/* Cards List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-2 min-h-0 glass-scrollbar">
-        <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+        <SortableContext items={cardIds.filter((id): id is string => !!id)} strategy={verticalListSortingStrategy}>
           <AnimatePresence mode="popLayout">
             {columnCards.map(card => (
               <SortableCard
@@ -238,8 +238,8 @@ export default function KanbanBoard({
   organizationId,
   extraActions
 }: {
-  initialColumns: any[],
-  initialCards: any[],
+  initialColumns: KanbanColumn[],
+  initialCards: KanbanCardType[],
   organizationId: string,
   extraActions?: React.ReactNode
 }) {
@@ -248,7 +248,7 @@ export default function KanbanBoard({
   const [columns, setColumns] = useState(initialColumns)
   const [cards, setCards] = useState(initialCards)
   const [mounted, setMounted] = useState(false)
-  const [activeDragCard, setActiveDragCard] = useState<any>(null)
+  const [activeDragCard, setActiveDragCard] = useState<KanbanCardType | null>(null)
 
   const [activeTimer, setActiveTimer] = useState<TimeEntry | null>(null)
 
@@ -278,7 +278,7 @@ export default function KanbanBoard({
           table: 'kanban_cards',
           filter: organizationId !== 'master' ? `organization_id=eq.${organizationId}` : undefined
         },
-        (payload: any) => {
+        (_payload: unknown) => {
           // Trigger a reactive server revalidation
           router.refresh()
         }

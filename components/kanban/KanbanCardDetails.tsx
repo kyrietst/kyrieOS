@@ -58,7 +58,7 @@ import {
 import { cn } from '@/lib/utils'
 
 import { startTimer, stopTimer, getCardTimeLogs } from '@/actions/time-tracking'
-import { TimeEntry, KanbanChecklist, KanbanCardComment, KanbanAttachment } from '@/types/kanban'
+import { TimeEntry, KanbanChecklist, KanbanCardComment, KanbanAttachment, KanbanCard, KanbanCardLabelJoin } from '@/types/kanban'
 import CardCoverSelector from './CardCoverSelector'
 import { TimerBadge } from './TimerBadge'
 import { LabelPicker } from './LabelPicker'
@@ -77,10 +77,10 @@ import { getCardMembers } from '@/actions/kanban'
 interface KanbanCardDetailsProps {
     isOpen: boolean
     onClose: () => void
-    card: any
+    card: KanbanCard
     activeTimer?: TimeEntry | null
     onTimerUpdate?: (t: TimeEntry | null) => void
-    attachments?: any[]
+    attachments?: KanbanAttachment[]
     fetchCard?: () => void
 }
 
@@ -98,7 +98,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 
     // Label State
     const [labelIds, setLabelIds] = useState<string[]>(
-        card.kanban_card_labels?.map((cl: any) => cl.kanban_labels.id) || []
+        card.kanban_card_labels?.map((cl: KanbanCardLabelJoin) => cl.kanban_labels.id) || []
     )
 
     // ICE Score State
@@ -157,7 +157,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
             setChecklists(checklistData)
             setComments(commentData)
             setCardAttachments(attachmentData)
-            setMemberIds(memberData?.map((m: any) => m.user_id) || [])
+            setMemberIds(memberData?.map((m) => m.user_id) || [])
         } catch (e) {
             console.error('Failed to fetch card data:', e)
         }
@@ -211,7 +211,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
         try {
             await updateCardDetails(card.id, {
                 title,
-                description: description === '' ? null : description,
+                description: description === '' ? undefined : description,
                 impact,
                 confidence,
                 effort
@@ -534,7 +534,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                     startDate={card.start_date}
                                     dueDate={card.due_date}
                                     reminder={card.reminder_at}
-                                    completed={card.is_due_date_completed}
+                                    completed={card.is_due_date_completed ?? undefined}
                                     onUpdate={async (data) => {
                                         await updateCardDates(card.id, {
                                             startDate: data.startDate,
@@ -594,11 +594,11 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                 </div>
 
                                 {/* Labels */}
-                                {card.kanban_card_labels?.length > 0 && (
+                                {(card.kanban_card_labels?.length ?? 0) > 0 && (
                                     <div className="space-y-1.5">
                                         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Etiquetas</h3>
                                         <div className="flex flex-wrap gap-2">
-                                            {card.kanban_card_labels.map((cl: any) => (
+                                            {card.kanban_card_labels?.map((cl: KanbanCardLabelJoin) => (
                                                 <Badge
                                                     key={cl.kanban_labels.id}
                                                     variant="secondary"
@@ -884,12 +884,12 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
                                     comments.map(comment => (
                                         <div key={comment.id} className="flex gap-3 group">
                                             <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex-shrink-0 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">
-                                                {(comment.profiles as any)?.full_name?.[0]?.toUpperCase() || 'U'}
+                                                {(comment.profiles as { full_name: string | null })?.full_name?.[0]?.toUpperCase() || 'U'}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-baseline gap-2">
                                                     <span className="font-semibold text-sm">
-                                                        {(comment.profiles as any)?.full_name || 'Usuário'}
+                                                        {(comment.profiles as { full_name: string | null })?.full_name || 'Usuário'}
                                                     </span>
                                                     <span className="text-xs text-muted-foreground">
                                                         {timeAgo(comment.created_at)}
@@ -918,7 +918,7 @@ export function KanbanCardDetails({ isOpen, onClose, card, activeTimer, onTimerU
 }
 
 
-function ToolbarButton({ icon: Icon }: { icon: any }) {
+function ToolbarButton({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) {
     return (
         <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground">
             <Icon className="w-4 h-4" />

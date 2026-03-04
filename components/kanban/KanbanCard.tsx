@@ -10,7 +10,7 @@ import { useState } from 'react'
 
 import { KanbanCardMenu } from './KanbanCardMenu'
 import { KanbanCardDetails } from './KanbanCardDetails'
-import { TimeEntry } from '@/types/kanban'
+import { TimeEntry, KanbanCard as KanbanCardType, KanbanCardLabelJoin } from '@/types/kanban'
 import { AvatarStack } from './../ui/avatar-stack'
 import {
     Avatar,
@@ -28,7 +28,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { KanbanColumn } from '@/types/kanban'
 
 interface KanbanCardProps {
-    card: any // Typing broadly to accept Master and Client cards
+    card: KanbanCardType
     onClick: () => void
     isMasterView: boolean
     hideActions?: boolean
@@ -47,7 +47,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
     const [isUpdatingTitle, setIsUpdatingTitle] = useState(false)
 
     // Master cards have 'card_id', Client cards have 'id'
-    const validCardId = card.id || card.card_id
+    const validCardId = card.id ?? card.card_id ?? ''
 
     // Strict check: activeTimer must exist AND match this card
     const isTimerActive = !!activeTimer && activeTimer.card_id === validCardId
@@ -176,7 +176,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
         onPin: handlePin
     }, !isEditingTitle)
 
-    const isCompletedColumn = card.kanban_columns?.is_done_column || card.is_done_column
+    const isCompletedColumn = card.kanban_columns?.is_done_column
 
     // Cover Data
     const coverType = card.cover_type as 'color' | 'image' | null
@@ -342,9 +342,9 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
 
                             {/* Metadata Row (Conditional to avoid gap-1 when empty) */}
                             {(() => {
-                                const labels = Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object'
-                                    ? card.labels
-                                    : (card.kanban_card_labels?.map((cl: any) => cl.kanban_labels) || []);
+                                const labels: { id: string; name: string; color: string }[] = Array.isArray(card.labels) && card.labels.length > 0 && typeof card.labels[0] === 'object'
+                                    ? card.labels as unknown as { id: string; name: string; color: string }[]
+                                    : (card.kanban_card_labels?.map((cl: KanbanCardLabelJoin) => cl.kanban_labels) || []);
 
                                 const hasLabels = labels.length > 0;
                                 const hasAssignee = !!card.assigned_to_user;
@@ -359,9 +359,9 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
                                             {hasAssignee && (
                                                 <AvatarStack size={18}>
                                                     <Avatar className="border-1.5 border-background">
-                                                        <AvatarImage src={card.assigned_to_user.avatar_url || undefined} />
+                                                        <AvatarImage src={card.assigned_to_user?.avatar_url || undefined} />
                                                         <AvatarFallback className="text-[6px]">
-                                                            {(card.assigned_to_user.full_name || 'U').substring(0, 2).toUpperCase()}
+                                                            {(card.assigned_to_user?.full_name || 'U').substring(0, 2).toUpperCase()}
                                                         </AvatarFallback>
                                                     </Avatar>
                                                 </AvatarStack>
@@ -369,7 +369,7 @@ export default function KanbanCard({ card, onClick, isMasterView, hideActions = 
 
                                             {/* Labels */}
                                             {/* Labels */}
-                                            {labels.map((l: any, i: number) => {
+                                            {labels.map((l: { id: string; name: string; color: string }, i: number) => {
                                                 const colorMap: Record<string, string> = {
                                                     'bg-red-500': 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/20',
                                                     'bg-blue-500': 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/20',

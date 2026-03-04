@@ -25,9 +25,10 @@ import {
 import { toast } from 'sonner'
 import { duplicateCard, archiveCard, updateCardColor, toggleCardPin } from '@/actions/kanban'
 import { useState } from 'react'
+import type { KanbanCard } from '@/types/kanban'
 
 interface KanbanCardMenuProps {
-    card: any
+    card: KanbanCard
     onOpen: () => void // Left click action (passed from parent)
     children?: React.ReactNode
     onPinToggle?: (cardId: string, isPinned: boolean) => void
@@ -81,7 +82,7 @@ export function KanbanCardMenu({ card, onOpen, children, onPinToggle }: KanbanCa
 
     const handleTogglePin = async () => {
         const newPinnedState = !card.is_pinned
-        const validId = card.id || card.card_id
+        const validId = card.id
         // Optimistic update FIRST (instant reorder with animation)
         onPinToggle?.(validId, newPinnedState)
         try {
