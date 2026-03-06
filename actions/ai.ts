@@ -28,14 +28,47 @@ export async function sendMessage(conversationId: string | undefined, message: s
   })
   if (userMsgError) throw userMsgError
 
-  // Mock AI response for now (Integration would go here)
-  const aiResponse = `This is a mock response to: "${message}". RAG integration coming soon.`
+  // Buscar histórico para contexto (últimas 20 mensagens)
+  const { data: history } = await supabase
+    .from('ai_messages')
+    .select('role, content')
+    .eq('conversation_id', convId)
+    .order('created_at', { ascending: true })
+    .limit(20)
+
+  const conversationHistory = (history || []).map((m: { role: string; content: string }) => ({
+    role: m.role,
+    content: m.content,
+  }))
+
+  // Chamar backend Python (LangGraph + Gemini/Groq)
+  const backendUrl = process.env.API_URL || 'http://localhost:8002'
+
+  const backendResponse = await fetch(`${backendUrl}/api/ai/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message,
+      conversation_history: conversationHistory,
+    }),
+  })
+
+  if (!backendResponse.ok) {
+    throw new Error(`Backend error: ${backendResponse.status}`)
+  }
+
+  const backendData = await backendResponse.json()
+  const aiResponse: string = backendData.message
+  const modelUsed: string | null = backendData.model_used || null
+  const tokensUsed: number | null = backendData.tokens_used || null
 
   // Save assistant message
   const { error: assistantMsgError } = await supabase.from('ai_messages').insert({
     conversation_id: convId,
     role: 'assistant',
-    content: aiResponse
+    content: aiResponse,
+    model_used: modelUsed,
+    tokens_used: tokensUsed,
   })
   if (assistantMsgError) throw assistantMsgError
 

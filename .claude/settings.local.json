@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__supabase-kyrie__execute_sql",
+      "Bash(npx tsx:*)",
+      "Bash(curl -s -X POST http://localhost:8002/api/ai/chat -H \"Content-Type: application/json\" -d @/tmp/test_diag.json)",
+      "Read(//tmp/**)",
+      "Bash(pkill:*)",
+      "Bash(netstat:*)",
+      "Bash(kill:*)",
+      "Bash(./venv/Scripts/pip.exe install:*)",
+      "Bash(while read pid)",
+      "Bash(do taskkill.exe //F //PID $pid)",
+      "Bash(done)",
+      "Bash(taskkill.exe:*)",
+      "Bash(python:*)",
+      "Bash(PYTHONPATH=\"$PWD\" ./venv/Scripts/python.exe:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

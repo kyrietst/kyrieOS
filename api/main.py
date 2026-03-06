@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from typing import Optional
 import os
 from dotenv import load_dotenv
 
@@ -35,12 +36,18 @@ def health_check():
 # app.include_router(ai_router)
 
 from api.graphs.report_generator import report_generator_app
+from api.graphs.chat_graph import chat_app
 
 
 class ReportRequest(BaseModel):
     client_slug: str
     week_start: str | None = None
     week_end: str | None = None
+
+
+class ChatRequest(BaseModel):
+    message: str
+    conversation_history: list[dict] = []
 
 
 @app.post("/api/ai/generate-report")
@@ -85,6 +92,64 @@ async def generate_report(payload: ReportRequest):
             "tasks_completed": len(result.get("tasks_data", []))
         }
     }
+
+@app.post("/api/ai/chat")
+async def chat_with_kyrie(payload: ChatRequest):
+    initial_state = {
+        "user_message": payload.message,
+        "conversation_history": payload.conversation_history,
+        "ai_response": "",
+        "model_used": "",
+        "tokens_used": 0,
+        "error": None,
+        "context_chunks": [],
+        "sources": [],
+    }
+    result = chat_app.invoke(initial_state)
+    return {
+        "success": result.get("error") is None,
+        "message": result["ai_response"],
+        "model_used": result["model_used"],
+        "tokens_used": result["tokens_used"],
+        "sources": result.get("sources", []),
+        "error": result.get("error")
+    }
+
+from api.agents.project_manager import ProjectManagerAgent
+
+
+class ExecuteRequest(BaseModel):
+    request: str
+    client_name: Optional[str] = None
+    context: dict = {}
+
+
+@app.post("/api/kyrie/execute")
+async def execute_kyrie_pipeline(payload: ExecuteRequest):
+    """
+    Multi-Agent Orchestrator — Full pipeline via Gestor de Projetos.
+    """
+    gp = ProjectManagerAgent()
+    brief = gp.execute_full_pipeline(payload.request, payload.client_name)
+
+    return {
+        "brief_id": brief.brief_id,
+        "status": brief.status.value,
+        "squads_activated": brief.squads_needed,
+        "contributions": [
+            {
+                "squad": c.squad,
+                "agent": c.agent,
+                "contribution": c.contribution,
+                "timestamp": c.timestamp.isoformat(),
+            }
+            for c in brief.contributions
+        ],
+        "final_output": brief.final_output,
+        "gp_validation": brief.gp_validation,
+        "strategic_analysis": brief.strategic_analysis,
+    }
+
 
 if __name__ == "__main__":
     import uvicorn

@@ -7,8 +7,13 @@ import { Send, Bot, User } from 'lucide-react'
 import { sendMessage } from '@/actions/ai'
 import { cn } from '@/lib/utils'
 
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<any[]>([
+  const [messages, setMessages] = useState<Message[]>([
     { role: 'assistant', content: 'Olá! Sou a Kyrie AI. Como posso ajudar com suas métricas ou tarefas hoje?' }
   ])
   const [input, setInput] = useState('')
@@ -23,7 +28,7 @@ export default function ChatInterface() {
   const handleSend = async () => {
     if (!input.trim() || loading) return
 
-    const userMsg = { role: 'user', content: input }
+    const userMsg: Message = { role: 'user', content: input }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setLoading(true)
