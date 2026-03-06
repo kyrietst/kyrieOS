@@ -81,3 +81,12 @@ ENV/
 # IDEs
 .vscode/
 .idea/
+
+# Large files / binaries
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.zip
+*.exe
+ffmpeg/
